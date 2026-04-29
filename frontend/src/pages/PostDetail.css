@@ -1,0 +1,188 @@
+.post-error {
+  padding: 5rem 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  color: var(--text-muted);
+}
+
+.post-detail__header {
+  padding-top: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.post-detail__breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.post-detail__breadcrumb a { color: var(--accent); }
+.post-detail__breadcrumb a:hover { text-decoration: underline; }
+
+.post-detail__title {
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+
+.post-detail__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.825rem;
+}
+.post-detail__author { color: var(--accent); }
+.post-detail__diff { font-size: 0.8rem; }
+
+.post-detail__tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.post-detail__cover {
+  max-height: 480px;
+  overflow: hidden;
+}
+.post-detail__cover img {
+  width: 100%;
+  object-fit: cover;
+  max-height: 480px;
+}
+
+.post-detail__body {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 3rem;
+  padding-top: 2.5rem;
+  padding-bottom: 3rem;
+  align-items: start;
+}
+
+.post-detail__content { min-width: 0; }
+
+/* Sidebar */
+.post-detail__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  position: sticky;
+  top: 80px;
+}
+.sidebar-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.sidebar-card h4 {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.sidebar-author {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.sidebar-author__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+.sidebar-author__name { font-size: 0.875rem; font-weight: 600; }
+.sidebar-author__bio { font-size: 0.775rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+.sidebar-cat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.825rem;
+  transition: border-color var(--transition);
+}
+.sidebar-cat:hover { border-color: var(--accent-border); }
+.sidebar-cat__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sidebar-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+/* Comments */
+.post-comments {
+  padding-bottom: 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.post-comments > h2 {
+  font-size: 1.25rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.75rem;
+}
+.comments-list { display: flex; flex-direction: column; gap: 1rem; }
+.comment {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
+.comment__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.comment__author { font-weight: 600; font-size: 0.875rem; color: var(--accent); }
+.comment__date { font-size: 0.775rem; }
+.comment__body { color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6; }
+
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 640px;
+}
+.comment-form h3 {
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+.comment-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.comment-form textarea.input { resize: vertical; }
+.comment-form__msg { font-size: 0.825rem; color: var(--accent); }
+
+@media (max-width: 900px) {
+  .post-detail__body {
+    grid-template-columns: 1fr;
+  }
+  .post-detail__sidebar { position: static; }
+  .comment-form__row { grid-template-columns: 1fr; }
+}
