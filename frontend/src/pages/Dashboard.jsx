@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import { blogApi } from '../api/client'
-import { useAuth } from '../context/AuthContext'
+import useAuth from '../context/useAuth'
 import Spinner from '../components/Spinner'
 import './Dashboard.css'
 
@@ -14,7 +14,6 @@ const DIFF_COLORS = {
 
 export default function Dashboard() {
   const { user } = useAuth()
-  const navigate = useNavigate()
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(null)

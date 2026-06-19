@@ -8,7 +8,24 @@ from django.contrib.auth.models import User
 from blog.models import Category, Tag, Post
 from django.utils import timezone
 
-u = User.objects.get(username='admin')
+username = os.environ.get('BLOG_ADMIN_USERNAME')
+password = os.environ.get('BLOG_ADMIN_PASSWORD')
+email = os.environ.get('BLOG_ADMIN_EMAIL', '')
+
+if not username or not password:
+    raise RuntimeError(
+        'Set BLOG_ADMIN_USERNAME and BLOG_ADMIN_PASSWORD before running seed_posts.py.'
+    )
+
+u, created = User.objects.get_or_create(
+    username=username,
+    defaults={'email': email, 'is_staff': True, 'is_superuser': True},
+)
+if created:
+    u.set_password(password)
+    u.save()
+    print(f'Created admin user: {username}')
+
 cats = {c.name: c for c in Category.objects.all()}
 
 posts_data = [

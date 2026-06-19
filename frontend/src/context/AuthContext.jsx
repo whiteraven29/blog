@@ -1,25 +1,22 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { authApi } from '../api/client'
-
-const AuthContext = createContext(null)
+import AuthContext from './auth-context'
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => Boolean(localStorage.getItem('access')))
 
   useEffect(() => {
     const token = localStorage.getItem('access')
-    if (token) {
-      authApi.me()
-        .then(({ data }) => setUser(data))
-        .catch(() => {
-          localStorage.removeItem('access')
-          localStorage.removeItem('refresh')
-        })
-        .finally(() => setLoading(false))
-    } else {
-      setLoading(false)
-    }
+    if (!token) return
+
+    authApi.me()
+      .then(({ data }) => setUser(data))
+      .catch(() => {
+        localStorage.removeItem('access')
+        localStorage.removeItem('refresh')
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   const login = async (credentials) => {
@@ -42,5 +39,3 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   )
 }
-
-export const useAuth = () => useContext(AuthContext)

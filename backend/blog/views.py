@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Q
+from django.db.models import Count, Q, Sum
 from .models import Category, Tag, Post, Comment, Newsletter
 from .serializers import (
     CategorySerializer, TagSerializer, PostListSerializer,
@@ -20,13 +20,17 @@ class IsAuthorOrReadOnly(permissions.BasePermission):
 
 
 class CategoryListView(generics.ListAPIView):
-    queryset = Category.objects.all()
+    queryset = Category.objects.annotate(
+        published_post_count=Count('posts', filter=Q(posts__status='published')),
+    ).order_by('name')
     serializer_class = CategorySerializer
     permission_classes = [permissions.AllowAny]
 
 
 class CategoryDetailView(generics.RetrieveAPIView):
-    queryset = Category.objects.all()
+    queryset = Category.objects.annotate(
+        published_post_count=Count('posts', filter=Q(posts__status='published')),
+    ).order_by('name')
     serializer_class = CategorySerializer
     lookup_field = 'slug'
     permission_classes = [permissions.AllowAny]
@@ -149,9 +153,10 @@ class StatsView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
+        published = Post.objects.filter(status='published')
         return Response({
-            'total_posts': Post.objects.filter(status='published').count(),
+            'total_posts': published.count(),
             'total_categories': Category.objects.count(),
             'total_tags': Tag.objects.count(),
-            'total_views': sum(p.views for p in Post.objects.filter(status='published')),
+            'total_views': published.aggregate(total=Sum('views'))['total'] or 0,
         })

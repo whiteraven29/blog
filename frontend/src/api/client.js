@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const BASE = 'http://localhost:8000/api'
+const BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
 
 const client = axios.create({ baseURL: BASE })
 
@@ -21,6 +21,7 @@ client.interceptors.response.use(
         try {
           const { data } = await axios.post(`${BASE}/auth/token/refresh/`, { refresh })
           localStorage.setItem('access', data.access)
+          if (data.refresh) localStorage.setItem('refresh', data.refresh)
           original.headers.Authorization = `Bearer ${data.access}`
           return client(original)
         } catch {

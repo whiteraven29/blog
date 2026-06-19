@@ -4,11 +4,17 @@ from .models import Category, Tag, Post, Comment, Newsletter
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    post_count = serializers.IntegerField(source='posts.count', read_only=True)
+    post_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
         fields = ['id', 'name', 'slug', 'description', 'color', 'post_count', 'created_at']
+
+    def get_post_count(self, obj):
+        annotated_count = getattr(obj, 'published_post_count', None)
+        if annotated_count is not None:
+            return annotated_count
+        return obj.posts.filter(status='published').count()
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -42,6 +48,7 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ['id', 'author_name', 'author_email', 'body', 'created_at']
         read_only_fields = ['created_at']
+        extra_kwargs = {'author_email': {'write_only': True}}
 
 
 class PostListSerializer(serializers.ModelSerializer):
@@ -94,6 +101,9 @@ class PostWriteSerializer(serializers.ModelSerializer):
             'excerpt', 'content', 'cover_image', 'status',
             'difficulty', 'is_featured', 'read_time', 'published_at',
         ]
+
+    def to_representation(self, instance):
+        return PostDetailSerializer(instance, context=self.context).data
 
     def _resolve_tags(self, validated_data):
         tag_names = validated_data.pop('tags_by_name', None)

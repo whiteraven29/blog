@@ -1,0 +1,30 @@
+[Unit]
+Description=wh1t3r4v3n Blog Gunicorn
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/apps/whiteraven-blog/current/backend
+EnvironmentFile=/var/www/shared/whiteraven-blog/.env
+Environment=TMPDIR=/var/www/tmp/whiteraven-blog
+ExecStart=/var/www/apps/whiteraven-blog/current/venv/bin/gunicorn \
+    --workers 3 \
+    --bind unix:/var/www/tmp/whiteraven-blog/gunicorn.sock \
+    --worker-tmp-dir /var/www/tmp/whiteraven-blog \
+    --access-logfile /var/www/logs/whiteraven-blog/access.log \
+    --error-logfile /var/www/logs/whiteraven-blog/error.log \
+    --capture-output \
+    config.wsgi:application
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/var/www/shared/whiteraven-blog /var/www/logs/whiteraven-blog /var/www/tmp/whiteraven-blog
+
+[Install]
+WantedBy=multi-user.target

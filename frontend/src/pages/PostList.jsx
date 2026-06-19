@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { blogApi } from '../api/client'
 import PostCard from '../components/PostCard'
 import Spinner from '../components/Spinner'
@@ -13,16 +13,19 @@ export default function PostList() {
   const [count, setCount] = useState(0)
   const [categories, setCategories] = useState([])
   const [tags, setTags] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
+  const [loadedQuery, setLoadedQuery] = useState(null)
+  const [hasNext, setHasNext] = useState(false)
+  const [loadError, setLoadError] = useState('')
 
   const search = params.get('search') || ''
   const category = params.get('category__slug') || ''
   const difficulty = params.get('difficulty') || ''
   const tag = params.get('tags__slug') || ''
+  const page = Math.max(1, Number(params.get('page')) || 1)
+  const queryKey = params.toString()
 
-  const fetchPosts = useCallback(() => {
-    setLoading(true)
+  useEffect(() => {
+    let cancelled = false
     const q = {}
     if (search) q.search = search
     if (category) q['category__slug'] = category
@@ -31,25 +34,46 @@ export default function PostList() {
     q.page = page
 
     blogApi.getPosts(q).then(({ data }) => {
-      setPosts(data.results || data)
-      setCount(data.count || (data.results || data).length)
-    }).finally(() => setLoading(false))
-  }, [search, category, difficulty, tag, page])
+      if (cancelled) return
+      const results = data.results || data
+      setPosts(results)
+      setCount(data.count ?? results.length)
+      setHasNext(Boolean(data.next))
+      setLoadError('')
+      setLoadedQuery(queryKey)
+    }).catch(() => {
+      if (cancelled) return
+      setPosts([])
+      setCount(0)
+      setHasNext(false)
+      setLoadError('Could not load posts. Please try again.')
+      setLoadedQuery(queryKey)
+    })
+
+    return () => { cancelled = true }
+  }, [search, category, difficulty, tag, page, queryKey])
 
   useEffect(() => {
     blogApi.getCategories().then(({ data }) => setCategories(data.results || data))
     blogApi.getTags().then(({ data }) => setTags(data.results || data))
   }, [])
 
-  useEffect(() => { setPage(1) }, [search, category, difficulty, tag])
-  useEffect(() => { fetchPosts() }, [fetchPosts])
-
   const setFilter = (key, val) => {
     const next = new URLSearchParams(params)
     if (val) next.set(key, val)
     else next.delete(key)
+    next.delete('page')
     setParams(next)
   }
+
+  const setPage = (nextPage) => {
+    const next = new URLSearchParams(params)
+    if (nextPage > 1) next.set('page', String(nextPage))
+    else next.delete('page')
+    setParams(next)
+  }
+
+  const loading = loadedQuery !== queryKey
 
   return (
     <main className="post-list-page container">
@@ -127,6 +151,10 @@ export default function PostList() {
         <div className="post-list-content">
           {loading ? (
             <Spinner />
+          ) : loadError ? (
+            <div className="empty">
+              <p>{loadError}</p>
+            </div>
           ) : posts.length === 0 ? (
             <div className="empty">
               <p>No posts found.</p>
@@ -148,7 +176,7 @@ export default function PostList() {
                 <span className="pagination__info">page {page}</span>
                 <button
                   className="btn btn--ghost"
-                  disabled={posts.length < 12}
+                  disabled={!hasNext}
                   onClick={() => setPage(page + 1)}
                 >
                   next --&gt;

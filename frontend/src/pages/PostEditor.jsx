@@ -123,7 +123,7 @@ export default function PostEditor() {
           )}
           <button
             className="btn btn--ghost"
-            onClick={() => save()}
+            onClick={() => save('draft')}
             disabled={saving}
           >
             {saving ? 'Saving…' : 'Save draft'}

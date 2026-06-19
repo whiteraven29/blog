@@ -1,0 +1,14 @@
+/var/www/logs/whiteraven-blog/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 www-data adm
+    sharedscripts
+    postrotate
+        systemctl reload whiteraven-blog.service >/dev/null 2>&1 || true
+        systemctl reload nginx >/dev/null 2>&1 || true
+    endscript
+}

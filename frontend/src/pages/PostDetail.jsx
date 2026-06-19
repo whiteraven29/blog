@@ -17,19 +17,27 @@ const DIFF_COLORS = {
 
 export default function PostDetail() {
   const { slug } = useParams()
-  const [post, setPost] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [request, setRequest] = useState({
+    slug: null,
+    post: null,
+    error: null,
+  })
   const [comment, setComment] = useState({ author_name: '', author_email: '', body: '' })
   const [commentMsg, setCommentMsg] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    setLoading(true)
+    let cancelled = false
+
     blogApi.getPost(slug)
-      .then(({ data }) => setPost(data))
-      .catch(() => setError('Post not found.'))
-      .finally(() => setLoading(false))
+      .then(({ data }) => {
+        if (!cancelled) setRequest({ slug, post: data, error: null })
+      })
+      .catch(() => {
+        if (!cancelled) setRequest({ slug, post: null, error: 'Post not found.' })
+      })
+
+    return () => { cancelled = true }
   }, [slug])
 
   const handleComment = async (e) => {
@@ -46,13 +54,15 @@ export default function PostDetail() {
     }
   }
 
-  if (loading) return <Spinner />
-  if (error) return (
+  if (request.slug !== slug) return <Spinner />
+  if (request.error) return (
     <div className="post-error container">
-      <p>{error}</p>
+      <p>{request.error}</p>
       <Link to="/posts" className="btn btn--ghost">Back to posts</Link>
     </div>
   )
+
+  const post = request.post
 
   return (
     <article className="post-detail">
