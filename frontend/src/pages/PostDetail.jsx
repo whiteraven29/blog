@@ -186,7 +186,7 @@ export default function PostDetail() {
             {post.comments.map((c) => (
               <div key={c.id} className="comment">
                 <div className="comment__header">
-                  <span className="comment__author">{c.author_name}</span>
+                  <span className="comment__author">{c.author_name || 'Anonymous'}</span>
                   <span className="comment__date text-muted">
                     {format(new Date(c.created_at), 'MMM d, yyyy')}
                   </span>
@@ -204,20 +204,18 @@ export default function PostDetail() {
             <input
               id="comment-name"
               className="input"
-              placeholder="Your name"
+              placeholder="Your name (optional)"
               value={comment.author_name}
               onChange={(e) => setComment({ ...comment, author_name: e.target.value })}
-              required
             />
             <label className="sr-only" htmlFor="comment-email">Email address</label>
             <input
               id="comment-email"
               className="input"
               type="email"
-              placeholder="your@email.com"
+              placeholder="Email (optional)"
               value={comment.author_email}
               onChange={(e) => setComment({ ...comment, author_email: e.target.value })}
-              required
             />
           </div>
           <label className="sr-only" htmlFor="comment-body">Comment</label>

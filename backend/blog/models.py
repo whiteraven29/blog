@@ -87,8 +87,8 @@ class Post(models.Model):
 
 class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
-    author_name = models.CharField(max_length=80)
-    author_email = models.EmailField()
+    author_name = models.CharField(max_length=80, blank=True, default='')
+    author_email = models.EmailField(blank=True, default='')
     body = models.TextField()
     is_approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -97,7 +97,7 @@ class Comment(models.Model):
         ordering = ['created_at']
 
     def __str__(self):
-        return f'{self.author_name} on "{self.post.title}"'
+        return f'{self.author_name or "Anonymous"} on "{self.post.title}"'
 
 
 class Newsletter(models.Model):

@@ -48,7 +48,10 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ['id', 'author_name', 'author_email', 'body', 'created_at']
         read_only_fields = ['created_at']
-        extra_kwargs = {'author_email': {'write_only': True}}
+        extra_kwargs = {
+            'author_name': {'required': False, 'allow_blank': True},
+            'author_email': {'required': False, 'allow_blank': True, 'write_only': True},
+        }
 
 
 class PostListSerializer(serializers.ModelSerializer):

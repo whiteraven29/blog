@@ -66,6 +66,17 @@ class BlogApiTests(APITestCase):
         self.assertNotIn('author_email', response.data)
         self.assertEqual(Comment.objects.get().author_email, 'reader@example.com')
 
+    def test_comment_submission_allows_anonymous_author(self):
+        response = self.client.post(
+            reverse('comment-create', kwargs={'slug': self.published.slug}),
+            {'body': 'Anonymous feedback'},
+        )
+
+        self.assertEqual(response.status_code, 201)
+        comment = Comment.objects.get()
+        self.assertEqual(comment.author_name, '')
+        self.assertEqual(comment.author_email, '')
+
     def test_editor_get_returns_nested_category_and_tags(self):
         self.authenticate()
 
