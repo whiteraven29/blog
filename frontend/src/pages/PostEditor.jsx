@@ -238,7 +238,7 @@ export default function PostEditor() {
         </aside>
 
         {/* Markdown editor */}
-        <div className="editor-main" data-color-mode="dark">
+        <div className="editor-main" data-color-mode="light">
           <MDEditor
             value={form.content}
             onChange={(val) => set('content', val || '')}
@@ -246,9 +246,9 @@ export default function PostEditor() {
             height="100%"
             visibleDragbar={false}
             toolbarHeight={44}
-            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
+            style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
             previewOptions={{
-              style: { background: 'var(--bg-secondary)', padding: '1.5rem' },
+              style: { padding: '1.5rem' },
             }}
           />
           <div className="editor-preview-toggle">

@@ -136,53 +136,65 @@
   gap: 0.75rem;
 }
 
-/* Override md-editor styles to match our theme */
+/* Keep every writing and preview surface light for reliable contrast. */
 .editor-main .w-md-editor {
   flex: 1;
-  background: var(--bg-secondary) !important;
-  color: var(--text-primary) !important;
+  background: #ffffff !important;
+  color: #172033 !important;
   border-color: var(--border) !important;
 }
 .editor-main .w-md-editor-toolbar {
-  background: var(--bg-card) !important;
-  border-color: var(--border) !important;
+  background: #f8fafc !important;
+  border-color: #d9e0ea !important;
 }
 .editor-main .w-md-editor-toolbar li > button {
-  color: var(--text-secondary) !important;
+  color: #475569 !important;
 }
 .editor-main .w-md-editor-toolbar li > button:hover {
-  color: var(--accent) !important;
-  background: var(--accent-dim) !important;
+  color: #7e22ce !important;
+  background: #f3e8ff !important;
 }
 .editor-main .w-md-editor-text-input,
-.editor-main .w-md-editor-text {
-  color: var(--text-primary) !important;
-  background: var(--bg-secondary) !important;
+.editor-main .w-md-editor-text,
+.editor-main .w-md-editor-text-pre {
+  color: #172033 !important;
+  background: #ffffff !important;
+  -webkit-text-fill-color: #172033 !important;
+  caret-color: #172033 !important;
+}
+.editor-main .w-md-editor-text-pre > code,
+.editor-main .w-md-editor-text-pre > code span {
+  color: #172033 !important;
+  -webkit-text-fill-color: #172033 !important;
 }
 .editor-main .wmde-markdown {
-  background: var(--bg-secondary) !important;
-  color: var(--text-secondary) !important;
+  background: #ffffff !important;
+  color: #334155 !important;
   font-family: var(--mono) !important;
 }
 .editor-main .wmde-markdown h1,
 .editor-main .wmde-markdown h2,
 .editor-main .wmde-markdown h3 {
-  color: var(--text-primary) !important;
-  border-color: var(--border) !important;
+  color: #0f172a !important;
+  border-color: #d9e0ea !important;
 }
 .editor-main .wmde-markdown code {
-  background: var(--bg-card) !important;
-  color: var(--accent) !important;
+  background: #f1f5f9 !important;
+  color: #7e22ce !important;
 }
 .editor-main .wmde-markdown pre {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border) !important;
+  background: #f8fafc !important;
+  border: 1px solid #d9e0ea !important;
 }
 .editor-main .wmde-markdown blockquote {
-  border-left-color: var(--accent) !important;
-  color: var(--text-muted) !important;
+  border-left-color: #a855f7 !important;
+  color: #475569 !important;
 }
-.editor-main .w-md-editor-bar svg { fill: var(--text-muted) !important; }
+.editor-main .w-md-editor-bar {
+  background-color: #f8fafc !important;
+  box-shadow: 0 -1px 0 #d9e0ea inset !important;
+}
+.editor-main .w-md-editor-bar svg { fill: #64748b !important; }
 
 /* Preview mode toggle */
 .editor-preview-toggle {
