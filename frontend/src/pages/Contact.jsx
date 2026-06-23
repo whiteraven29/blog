@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import Seo from '../components/Seo'
+import { PROFILE } from '../config/profile'
 import './Contact.css'
 
 export default function Contact() {
@@ -13,8 +15,9 @@ export default function Contact() {
 
   return (
     <main className="contact-page container">
+      <Seo title="Contact" description="Contact wh1t3r4v3n about security research, collaboration, or consulting." />
       <div className="page-header">
-        <h1><span className="accent">/</span>contacts</h1>
+        <h1><span className="accent" aria-hidden="true">/</span>contacts</h1>
         <p className="text-muted">
           Interested in collaboration, security research, or just want to say hi?
         </p>
@@ -27,17 +30,29 @@ export default function Contact() {
             <div className="info-items">
               <div className="info-item">
                 <span className="info-label">Email</span>
-                <a href="mailto:hello@wh1t3r4v3n.dev" className="info-val accent">hello@wh1t3r4v3n.dev</a>
+                <a href={`mailto:${PROFILE.email}`} className="info-val accent">{PROFILE.email}</a>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Phone</span>
+                <a href={`tel:${PROFILE.phoneHref}`} className="info-val">{PROFILE.phoneDisplay}</a>
               </div>
               <div className="info-item">
                 <span className="info-label">GitHub</span>
-                <a href="https://github.com" className="info-val" target="_blank" rel="noreferrer">
-                  github.com/wh1t3r4v3n
+                <a href={PROFILE.githubUrl} className="info-val" target="_blank" rel="noreferrer">
+                  {PROFILE.githubLabel}
                 </a>
               </div>
               <div className="info-item">
                 <span className="info-label">Twitter/X</span>
-                <span className="info-val">@wh1t3r4v3n</span>
+                <a href={PROFILE.xUrl} className="info-val" target="_blank" rel="noreferrer">
+                  {PROFILE.xHandle}
+                </a>
+              </div>
+              <div className="info-item">
+                <span className="info-label">LinkedIn</span>
+                <a href={PROFILE.linkedinUrl} className="info-val" target="_blank" rel="noreferrer">
+                  {PROFILE.linkedinLabel}
+                </a>
               </div>
             </div>
           </div>
@@ -54,8 +69,9 @@ export default function Contact() {
         <form className="contact-form" onSubmit={handleSubmit}>
           <div className="form-row">
             <div className="field">
-              <label className="field__label">Name</label>
+              <label className="field__label" htmlFor="contact-name">Name</label>
               <input
+                id="contact-name"
                 className="input"
                 placeholder="Your name"
                 value={form.name}
@@ -64,8 +80,9 @@ export default function Contact() {
               />
             </div>
             <div className="field">
-              <label className="field__label">Email</label>
+              <label className="field__label" htmlFor="contact-email">Email</label>
               <input
+                id="contact-email"
                 className="input"
                 type="email"
                 placeholder="your@email.com"
@@ -76,8 +93,9 @@ export default function Contact() {
             </div>
           </div>
           <div className="field">
-            <label className="field__label">Subject</label>
+            <label className="field__label" htmlFor="contact-subject">Subject</label>
             <input
+              id="contact-subject"
               className="input"
               placeholder="What's this about?"
               value={form.title}
@@ -86,8 +104,9 @@ export default function Contact() {
             />
           </div>
           <div className="field">
-            <label className="field__label">Message</label>
+            <label className="field__label" htmlFor="contact-message">Message</label>
             <textarea
+              id="contact-message"
               className="input"
               placeholder="Tell me more..."
               rows={7}

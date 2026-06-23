@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { PROFILE } from '../config/profile'
 import './Footer.css'
 
 export default function Footer() {
@@ -28,6 +29,15 @@ export default function Footer() {
             <span className="footer__col-title">More</span>
             <Link to="/about">#about</Link>
             <Link to="/contact">#contact</Link>
+            <a href="/rss.xml">#rss</a>
+            <Link to="/login">admin</Link>
+          </div>
+          <div className="footer__col">
+            <span className="footer__col-title">Profiles</span>
+            <a href={PROFILE.githubUrl} target="_blank" rel="noreferrer">GitHub</a>
+            <a href={PROFILE.xUrl} target="_blank" rel="noreferrer">X / Twitter</a>
+            <a href={PROFILE.linkedinUrl} target="_blank" rel="noreferrer">LinkedIn</a>
+            <a href={`mailto:${PROFILE.email}`}>Email</a>
           </div>
         </div>
       </div>

@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom'
+import Seo from '../components/Seo'
+import { PROFILE } from '../config/profile'
 import './About.css'
 
 const skills = {
@@ -20,10 +22,11 @@ const funFacts = [
 export default function About() {
   return (
     <main className="about-page">
+      <Seo title="About" description="About wh1t3r4v3n, a security researcher and developer." />
       <section className="about-hero container">
         <div className="about-hero__text">
           <p className="about-hero__greet">// about me</p>
-          <h1><span className="accent">/</span>about-me</h1>
+          <h1><span className="accent" aria-hidden="true">/</span>about-me</h1>
           <div className="about-bio">
             <p>
               Hey, I'm a security researcher and developer passionate about breaking things (with permission)
@@ -38,6 +41,12 @@ export default function About() {
           <div className="about-hero__actions">
             <Link to="/posts" className="btn btn--primary">Read posts --&gt;</Link>
             <Link to="/contact" className="btn btn--ghost">#contact</Link>
+          </div>
+          <div className="about-socials" aria-label="Profile links">
+            <a href={PROFILE.githubUrl} target="_blank" rel="noreferrer">GitHub</a>
+            <a href={PROFILE.xUrl} target="_blank" rel="noreferrer">X</a>
+            <a href={PROFILE.linkedinUrl} target="_blank" rel="noreferrer">LinkedIn</a>
+            <a href={`mailto:${PROFILE.email}`}>Email</a>
           </div>
         </div>
         <div className="about-hero__visual" aria-hidden>

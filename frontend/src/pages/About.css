@@ -32,6 +32,18 @@
   max-width: 560px;
 }
 .about-hero__actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+.about-socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-top: 1.25rem;
+  font-size: 0.8rem;
+}
+.about-socials a {
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+.about-socials a:hover { color: var(--accent); }
 
 /* Terminal widget */
 .terminal {

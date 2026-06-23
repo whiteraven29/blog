@@ -99,7 +99,7 @@ blog/
 │   ├── accounts/                # Auth + user profile app
 │   │   ├── models.py            # Profile (extends User)
 │   │   ├── serializers.py
-│   │   ├── views.py             # Login, register, profile, me
+│   │   ├── views.py             # Login, profile, me
 │   │   └── urls.py
 │   ├── media/                   # Uploaded covers & avatars (gitignored)
 │   ├── db.sqlite3               # SQLite database
@@ -349,7 +349,6 @@ Valid `ordering` values: `published_at`, `views`, `created_at`, `read_time`.
 
 | Method | Endpoint                  | Description                                          |
 |--------|---------------------------|------------------------------------------------------|
-| POST   | `/auth/register/`         | `{ username, email, password, password2 }`           |
 | POST   | `/auth/login/`            | `{ username, password }` → `{ access, refresh, user }` |
 | POST   | `/auth/token/refresh/`    | `{ refresh }` → `{ access }`                        |
 | GET    | `/auth/me/`               | Current user info (requires auth)                    |
@@ -468,7 +467,6 @@ blogApi.updatePost(slug, data)    // PATCH /blog/posts/:slug/edit/ (auth)
 blogApi.deletePost(slug)          // DELETE /blog/posts/:slug/edit/ (auth)
 
 authApi.login(data)               // POST /auth/login/
-authApi.register(data)            // POST /auth/register/
 authApi.me()                      // GET /auth/me/
 ```
 

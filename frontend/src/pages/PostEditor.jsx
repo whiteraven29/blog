@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import MDEditor from '@uiw/react-md-editor'
 import { blogApi } from '../api/client'
+import { markdownPlugins, normalizeMarkdown } from '../components/markdownConfig'
 import Spinner from '../components/Spinner'
 import './PostEditor.css'
 
@@ -65,7 +66,7 @@ export default function PostEditor() {
     return {
       title: form.title,
       excerpt: form.excerpt,
-      content: form.content,
+      content: normalizeMarkdown(form.content),
       category: form.category || null,
       tags_by_name: tagList,
       difficulty: form.difficulty,
@@ -109,7 +110,9 @@ export default function PostEditor() {
       {/* Top bar */}
       <div className="editor-topbar">
         <Link to="/dashboard" className="editor-back">← dashboard</Link>
+        <label className="sr-only" htmlFor="editor-title">Post title</label>
         <input
+          id="editor-title"
           className="editor-title-input"
           placeholder="Post title..."
           value={form.title}
@@ -144,8 +147,9 @@ export default function PostEditor() {
         {/* Sidebar */}
         <aside className="editor-sidebar">
           <div className="editor-field">
-            <label>Category</label>
+            <label htmlFor="editor-category">Category</label>
             <select
+              id="editor-category"
               className="input"
               value={form.category}
               onChange={(e) => set('category', e.target.value)}
@@ -158,8 +162,9 @@ export default function PostEditor() {
           </div>
 
           <div className="editor-field">
-            <label>Tags <span className="editor-hint">comma separated</span></label>
+            <label htmlFor="editor-tags">Tags <span className="editor-hint">comma separated</span></label>
             <input
+              id="editor-tags"
               className="input"
               placeholder="ctf, web, python"
               value={form.tags}
@@ -168,8 +173,9 @@ export default function PostEditor() {
           </div>
 
           <div className="editor-field">
-            <label>Difficulty</label>
+            <label htmlFor="editor-difficulty">Difficulty</label>
             <select
+              id="editor-difficulty"
               className="input"
               value={form.difficulty}
               onChange={(e) => set('difficulty', e.target.value)}
@@ -181,8 +187,9 @@ export default function PostEditor() {
           </div>
 
           <div className="editor-field">
-            <label>Read time (min)</label>
+            <label htmlFor="editor-read-time">Read time (min)</label>
             <input
+              id="editor-read-time"
               className="input"
               type="number"
               min="1"
@@ -193,8 +200,9 @@ export default function PostEditor() {
           </div>
 
           <div className="editor-field">
-            <label>Excerpt</label>
+            <label htmlFor="editor-excerpt">Excerpt</label>
             <textarea
+              id="editor-excerpt"
               className="input"
               rows={4}
               placeholder="Brief summary shown in post cards..."
@@ -214,8 +222,9 @@ export default function PostEditor() {
           </div>
 
           <div className="editor-field">
-            <label>Status</label>
+            <label htmlFor="editor-status">Status</label>
             <select
+              id="editor-status"
               className="input"
               value={form.status}
               onChange={(e) => set('status', e.target.value)}
@@ -248,6 +257,7 @@ export default function PostEditor() {
             toolbarHeight={44}
             style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
             previewOptions={{
+              ...markdownPlugins,
               style: { padding: '1.5rem' },
             }}
           />

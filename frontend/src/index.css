@@ -39,6 +39,31 @@ html {
   scroll-behavior: smooth;
 }
 
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 1000;
+  transform: translateY(-200%);
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+}
+.skip-link:focus { transform: translateY(0); }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 body {
   font-family: var(--mono);
   background: var(--bg-primary);
@@ -145,6 +170,13 @@ img {
   color: var(--accent);
 }
 .prose pre { margin: 1.5em 0; }
+.prose pre:not(:has(.hljs)) {
+  overflow-x: auto;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+}
 .prose pre code {
   background: none;
   border: none;
@@ -166,3 +198,16 @@ img {
   border-top: 1px solid var(--border);
   margin: 2em 0;
 }
+.prose table {
+  width: 100%;
+  margin: 1.5em 0;
+  border-collapse: collapse;
+  overflow-x: auto;
+}
+.prose th, .prose td {
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+.prose th { color: var(--text-primary); background: var(--bg-secondary); }
+.prose img { margin: 1.5em auto; border-radius: var(--radius); }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { blogApi } from '../api/client'
 import PostCard from '../components/PostCard'
+import Seo from '../components/Seo'
 import Spinner from '../components/Spinner'
 import './Home.css'
 
@@ -43,12 +44,13 @@ export default function Home() {
 
   return (
     <main className="home">
+      <Seo />
       {/* Hero */}
       <section className="hero container">
         <div className="hero__content">
           <p className="hero__greeting">// welcome to</p>
           <h1 className="hero__title">
-            <span className="accent">wh1t3r4v3n</span>blog
+            <span className="accent">wh1t3r4v3n</span> blog
           </h1>
           <p className="hero__sub">
             Writeups on <span className="accent">offensive security</span>, CTF challenges,{' '}
@@ -69,7 +71,7 @@ export default function Home() {
       </section>
 
       {/* Stats */}
-      {stats && (
+      {stats?.total_posts > 0 && (
         <section className="stats container">
           <div className="stats__grid">
             <div className="stats__item">
@@ -143,7 +145,9 @@ export default function Home() {
           <h2><span className="accent">#</span>stay-updated</h2>
           <p>Get notified when new writeups drop — no spam, ever.</p>
           <form className="newsletter__form" onSubmit={handleSubscribe}>
+            <label className="sr-only" htmlFor="newsletter-email">Email address</label>
             <input
+              id="newsletter-email"
               type="email"
               className="input"
               placeholder="your@email.com"

@@ -30,6 +30,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <a className="skip-link" href="#main-content">Skip to content</a>
         <Routes>
           {/* Editor is full-screen — no navbar/footer */}
           <Route path="/editor/:slug" element={
@@ -42,26 +43,28 @@ export default function App() {
 
           {/* All other routes get the shell */}
           <Route path="*" element={
-            <>
+            <div>
               <Navbar />
-              <Suspense fallback={<Spinner />}>
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/posts" element={<PostList />} />
-                  <Route path="/posts/:slug" element={<PostDetail />} />
-                  <Route path="/categories" element={<Categories />} />
-                  <Route path="/categories/:slug" element={<CategoryDetail />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/dashboard" element={
-                    <ProtectedRoute><Dashboard /></ProtectedRoute>
-                  } />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
+              <div id="main-content" tabIndex="-1">
+                <Suspense fallback={<Spinner />}>
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/posts" element={<PostList />} />
+                    <Route path="/posts/:slug" element={<PostDetail />} />
+                    <Route path="/categories" element={<Categories />} />
+                    <Route path="/categories/:slug" element={<CategoryDetail />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/dashboard" element={
+                      <ProtectedRoute><Dashboard /></ProtectedRoute>
+                    } />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </div>
               <Footer />
-            </>
+            </div>
           } />
         </Routes>
       </AuthProvider>

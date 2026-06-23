@@ -5,12 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from .models import Profile
-from .serializers import UserSerializer, ProfileSerializer, RegisterSerializer
-
-
-class RegisterView(generics.CreateAPIView):
-    serializer_class = RegisterSerializer
-    permission_classes = [permissions.AllowAny]
+from .serializers import UserSerializer, ProfileSerializer
 
 
 class LoginView(APIView):

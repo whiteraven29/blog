@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { blogApi } from '../api/client'
 import Spinner from '../components/Spinner'
+import Seo from '../components/Seo'
 import './Categories.css'
 
 export default function Categories() {
@@ -18,8 +19,9 @@ export default function Categories() {
 
   return (
     <main className="categories-page container">
+      <Seo title="Categories" description="Browse wh1t3r4v3n blog posts by topic." />
       <div className="page-header">
-        <h1><span className="accent">/</span>categories</h1>
+        <h1><span className="accent" aria-hidden="true">/</span>categories</h1>
         <p className="text-muted">Browse posts by topic</p>
       </div>
 

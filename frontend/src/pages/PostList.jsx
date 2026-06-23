@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { blogApi } from '../api/client'
 import PostCard from '../components/PostCard'
 import Spinner from '../components/Spinner'
+import Seo from '../components/Seo'
 import './PostList.css'
 
 const DIFFICULTIES = ['', 'beginner', 'intermediate', 'advanced']
@@ -77,14 +78,17 @@ export default function PostList() {
 
   return (
     <main className="post-list-page container">
+      <Seo title="Posts" description="Security, CTF, web development, and programming articles by wh1t3r4v3n." />
       <div className="page-header">
-        <h1><span className="accent">/</span>posts</h1>
+        <h1><span className="accent" aria-hidden="true">/</span>posts</h1>
         <p className="text-muted">{count} articles published</p>
       </div>
 
       {/* Search bar */}
       <div className="search-bar">
+        <label className="sr-only" htmlFor="post-search">Search posts</label>
         <input
+          id="post-search"
           className="input"
           type="search"
           placeholder="Search posts..."

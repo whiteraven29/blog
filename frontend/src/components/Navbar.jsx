@@ -70,11 +70,7 @@ export default function Navbar() {
               </Link>
               <button className="navbar__logout" onClick={handleLogout}>logout</button>
             </div>
-          ) : (
-            <Link to="/login" className="navbar__cta" onClick={() => setOpen(false)}>
-              login
-            </Link>
-          )}
+          ) : null}
         </nav>
 
         <button

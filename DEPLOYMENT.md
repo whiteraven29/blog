@@ -98,6 +98,17 @@ sudo APP_BRANCH=release /var/www/scripts/whiteraven-blog/deploy.sh
 sudo /var/www/scripts/whiteraven-blog/deploy.sh /path/to/checked-out/source
 ```
 
+When `deploy/nginx/whiteraven-blog.conf` changes, install the updated site
+configuration before deploying so root-level endpoints such as `sitemap.xml`
+and `rss.xml` reach Django:
+
+```bash
+sudo install -m 0644 deploy/nginx/whiteraven-blog.conf \
+  /etc/nginx/sites-available/whiteraven-blog
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
 ## Backups and rollback
 
 ```bash

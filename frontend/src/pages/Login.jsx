@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import useAuth from '../context/useAuth'
 import './Login.css'
 
@@ -32,8 +32,9 @@ export default function Login() {
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="field">
-            <label className="field__label">Username</label>
+            <label className="field__label" htmlFor="login-username">Username</label>
             <input
+              id="login-username"
               className="input"
               placeholder="username"
               value={form.username}
@@ -42,8 +43,9 @@ export default function Login() {
             />
           </div>
           <div className="field">
-            <label className="field__label">Password</label>
+            <label className="field__label" htmlFor="login-password">Password</label>
             <input
+              id="login-password"
               className="input"
               type="password"
               placeholder="••••••••"
@@ -57,10 +59,6 @@ export default function Login() {
             {loading ? 'Logging in...' : 'Login --&gt;'}
           </button>
         </form>
-
-        <p className="auth-footer text-muted">
-          Don't have an account? <Link to="/register" className="accent">Register</Link>
-        </p>
       </div>
     </main>
   )

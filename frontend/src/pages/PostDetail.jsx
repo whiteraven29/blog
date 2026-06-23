@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeHighlight from 'rehype-highlight'
 import { format } from 'date-fns'
 import { blogApi } from '../api/client'
+import MarkdownContent from '../components/MarkdownContent'
+import Seo from '../components/Seo'
 import Spinner from '../components/Spinner'
-import 'highlight.js/styles/github-dark.css'
 import './PostDetail.css'
 
 const DIFF_COLORS = {
@@ -63,9 +61,30 @@ export default function PostDetail() {
   )
 
   const post = request.post
+  const description = post.excerpt || post.content.slice(0, 160)
+  const articleSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.title,
+    description,
+    datePublished: post.published_at,
+    dateModified: post.updated_at,
+    author: {
+      '@type': 'Person',
+      name: post.author?.username || 'wh1t3r4v3n',
+    },
+    ...(post.cover_image ? { image: post.cover_image } : {}),
+  }
 
   return (
     <article className="post-detail">
+      <Seo
+        title={post.title}
+        description={description}
+        image={post.cover_image}
+        type="article"
+        jsonLd={articleSchema}
+      />
       <header className="post-detail__header container">
         <div className="post-detail__breadcrumb">
           <Link to="/posts">#posts</Link>
@@ -115,11 +134,7 @@ export default function PostDetail() {
       )}
 
       <div className="post-detail__body container">
-        <div className="prose post-detail__content">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-            {post.content}
-          </ReactMarkdown>
-        </div>
+        <MarkdownContent className="post-detail__content">{post.content}</MarkdownContent>
 
         <aside className="post-detail__sidebar">
           <div className="sidebar-card">
@@ -185,14 +200,18 @@ export default function PostDetail() {
         <form className="comment-form" onSubmit={handleComment}>
           <h3>Leave a comment</h3>
           <div className="comment-form__row">
+            <label className="sr-only" htmlFor="comment-name">Your name</label>
             <input
+              id="comment-name"
               className="input"
               placeholder="Your name"
               value={comment.author_name}
               onChange={(e) => setComment({ ...comment, author_name: e.target.value })}
               required
             />
+            <label className="sr-only" htmlFor="comment-email">Email address</label>
             <input
+              id="comment-email"
               className="input"
               type="email"
               placeholder="your@email.com"
@@ -201,7 +220,9 @@ export default function PostDetail() {
               required
             />
           </div>
+          <label className="sr-only" htmlFor="comment-body">Comment</label>
           <textarea
+            id="comment-body"
             className="input"
             placeholder="Write your comment..."
             rows={5}
