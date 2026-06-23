@@ -67,6 +67,20 @@ if [[ -z "${SOURCE_DIR}" ]]; then
     SOURCE_DIR="${STAGING_DIR}/source"
 fi
 
+if [[ ! -d "${SOURCE_DIR}" ]]; then
+    echo "Source directory does not exist: ${SOURCE_DIR}" >&2
+    exit 1
+fi
+
+SOURCE_DIR=$(cd "${SOURCE_DIR}" && pwd)
+if [[ ! -f "${SOURCE_DIR}/backend/requirements.txt" ||
+      ! -f "${SOURCE_DIR}/backend/manage.py" ||
+      ! -f "${SOURCE_DIR}/frontend/package.json" ]]; then
+    echo "Source directory is not the repository root: ${SOURCE_DIR}" >&2
+    echo "Expected backend/requirements.txt, backend/manage.py, and frontend/package.json." >&2
+    exit 1
+fi
+
 mkdir -p "${RELEASE_DIR}"
 rsync -a --delete \
     --exclude='.git/' \

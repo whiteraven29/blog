@@ -33,7 +33,7 @@ export default function Footer() {
       </div>
       <div className="footer__bottom container">
         <span>© {new Date().getFullYear()} wh1t3r4v3n. All rights reserved.</span>
-        <span className="footer__made">Made with Django + React</span>
+        <span className="footer__made">cybersecurity enthusiast</span>
       </div>
     </footer>
   )

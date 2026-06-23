@@ -68,6 +68,8 @@ before enabling permanent HSTS or preload options.
 Deploy the checked-out source:
 
 ```bash
+# Run this from the repository root (the directory containing backend/ and frontend/).
+cd /var/www/tmp/whiteraven-blog/bootstrap-source
 sudo /var/www/scripts/whiteraven-blog/deploy.sh "$PWD"
 sudo systemctl enable --now whiteraven-blog
 sudo systemctl enable --now nginx
