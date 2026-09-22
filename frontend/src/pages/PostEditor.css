@@ -108,6 +108,68 @@
   padding: 7px 10px;
 }
 .editor-field textarea.input { resize: vertical; }
+
+/* Inline "create category" form in the sidebar */
+.editor-field label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.editor-inline-add {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--accent);
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition);
+}
+.editor-inline-add:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-dim);
+}
+.category-create {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.65rem;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+}
+.category-create__row {
+  display: flex;
+  gap: 0.4rem;
+}
+.category-create__row .input { flex: 1; min-width: 0; }
+.category-create__color {
+  width: 34px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  cursor: pointer;
+}
+.category-create__error {
+  font-size: 0.7rem;
+  color: var(--danger);
+}
+.category-create__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+.category-create__actions .btn {
+  flex: 1;
+  justify-content: center;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+}
 .editor-field--check {
   flex-direction: row;
   align-items: center;

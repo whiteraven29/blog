@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Tag, Post, Comment, Newsletter
+from .models import Category, Tag, Post, Comment, ContactMessage, Newsletter
 
 
 @admin.register(Category)
@@ -43,3 +43,21 @@ class CommentAdmin(admin.ModelAdmin):
 class NewsletterAdmin(admin.ModelAdmin):
     list_display = ['email', 'subscribed_at', 'is_active']
     list_filter = ['is_active']
+
+
+@admin.register(ContactMessage)
+class ContactMessageAdmin(admin.ModelAdmin):
+    list_display = ['subject', 'name', 'email', 'is_read', 'created_at']
+    list_filter = ['is_read', 'created_at']
+    search_fields = ['name', 'email', 'subject', 'message']
+    # An inbox, not a draft: the submitted text is never edited in place.
+    readonly_fields = ['name', 'email', 'subject', 'message', 'created_at']
+    actions = ['mark_read', 'mark_unread']
+
+    @admin.action(description='Mark selected messages as read')
+    def mark_read(self, request, queryset):
+        queryset.update(is_read=True)
+
+    @admin.action(description='Mark selected messages as unread')
+    def mark_unread(self, request, queryset):
+        queryset.update(is_read=False)

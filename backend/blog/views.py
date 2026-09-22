@@ -1,15 +1,19 @@
 from rest_framework import generics, permissions, filters, status
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from .models import Category, Tag, Post, Comment, Newsletter
 from .serializers import (
     CategorySerializer, TagSerializer, PostListSerializer,
     PostDetailSerializer, PostWriteSerializer, CommentSerializer,
-    NewsletterSerializer,
+    NewsletterSerializer, ContactMessageSerializer,
 )
+
+
+CONTACT_ACK = {'message': "Thanks for reaching out — I'll get back to you soon."}
 
 
 class IsAuthorOrReadOnly(permissions.BasePermission):
@@ -19,12 +23,17 @@ class IsAuthorOrReadOnly(permissions.BasePermission):
         return obj.author == request.user
 
 
-class CategoryListView(generics.ListAPIView):
+class CategoryListCreateView(generics.ListCreateAPIView):
+    """Public listing; authenticated authors may add a category from the editor."""
+
     queryset = Category.objects.annotate(
         published_post_count=Count('posts', filter=Q(posts__status='published')),
     ).order_by('name')
     serializer_class = CategorySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    # The editor's category picker needs every category, not just the first page.
+    pagination_class = None
+    filter_backends = []
 
 
 class CategoryDetailView(generics.RetrieveAPIView):
@@ -37,25 +46,30 @@ class CategoryDetailView(generics.RetrieveAPIView):
 
 
 class TagListView(generics.ListAPIView):
-    queryset = Tag.objects.all()
+    queryset = Tag.objects.order_by('name')
     serializer_class = TagSerializer
     permission_classes = [permissions.AllowAny]
+    pagination_class = None
+    filter_backends = []
 
 
 class PostListView(generics.ListAPIView):
     serializer_class = PostListSerializer
     permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category__slug', 'tags__slug', 'difficulty', 'status', 'is_featured']
+    filterset_fields = ['category__slug', 'tags__slug', 'difficulty', 'is_featured']
     search_fields = ['title', 'excerpt', 'content', 'tags__name', 'category__name']
     ordering_fields = ['published_at', 'views', 'created_at', 'read_time']
     ordering = ['-published_at']
 
     def get_queryset(self):
-        qs = Post.objects.select_related('author', 'category').prefetch_related('tags')
-        if not (self.request.user.is_authenticated and self.request.user.is_staff):
-            qs = qs.filter(status='published')
-        return qs
+        # Always published only. Authors reach their drafts through /posts/mine/.
+        return (
+            Post.objects
+            .filter(status='published')
+            .select_related('author', 'category')
+            .prefetch_related('tags')
+        )
 
 
 class PostDetailView(generics.RetrieveAPIView):
@@ -65,13 +79,21 @@ class PostDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         qs = Post.objects.select_related('author', 'category').prefetch_related('tags', 'comments')
-        if not (self.request.user.is_authenticated and self.request.user.is_staff):
-            qs = qs.filter(status='published')
-        return qs
+        user = self.request.user
+        if not user.is_authenticated:
+            return qs.filter(status='published')
+        if user.is_staff:
+            return qs
+        # Authors can preview their own drafts from the editor.
+        return qs.filter(Q(status='published') | Q(author=user))
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
-        Post.objects.filter(pk=instance.pk).update(views=instance.views + 1)
+        if instance.status == 'published':
+            # F() keeps concurrent readers from overwriting each other's count,
+            # and the refresh returns the stored value rather than the stale one.
+            Post.objects.filter(pk=instance.pk).update(views=F('views') + 1)
+            instance.refresh_from_db(fields=['views'])
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
@@ -143,10 +165,44 @@ class SearchView(generics.ListAPIView):
 @permission_classes([permissions.AllowAny])
 def newsletter_subscribe(request):
     serializer = NewsletterSerializer(data=request.data)
-    if serializer.is_valid():
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    email = serializer.validated_data['email'].lower()
+    subscriber, created = Newsletter.objects.get_or_create(email=email)
+    if not created and not subscriber.is_active:
+        subscriber.is_active = True
+        subscriber.save(update_fields=['is_active'])
+
+    # A malformed address still returns 400, but a valid one always returns the
+    # same response so the endpoint cannot be used to enumerate subscribers.
+    return Response({'message': 'Subscribed successfully.'}, status=status.HTTP_200_OK)
+
+
+class ContactMessageCreateView(generics.CreateAPIView):
+    """Accept a contact-form submission.
+
+    Nothing submitted here is ever published, so there is no approval step. The
+    controls that matter are the ones against volume: a per-IP rate limit and a
+    honeypot, plus the link cap and length bounds enforced by the serializer.
+    """
+
+    serializer_class = ContactMessageSerializer
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'contact'
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if serializer.validated_data.get('website'):
+            # Answer a bot exactly as a person would be answered, and store
+            # nothing. Rejecting it would tell the author what to change.
+            return Response(CONTACT_ACK, status=status.HTTP_201_CREATED)
+
         serializer.save()
-        return Response({'message': 'Subscribed successfully.'}, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(CONTACT_ACK, status=status.HTTP_201_CREATED)
 
 
 class StatsView(APIView):

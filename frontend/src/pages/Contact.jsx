@@ -1,16 +1,40 @@
 import { useState } from 'react'
 import Seo from '../components/Seo'
+import { blogApi } from '../api/client'
 import { PROFILE } from '../config/profile'
 import './Contact.css'
 
-export default function Contact() {
-  const [form, setForm] = useState({ name: '', email: '', title: '', message: '' })
-  const [status, setStatus] = useState('')
+const EMPTY = { name: '', email: '', subject: '', message: '', website: '' }
 
-  const handleSubmit = (e) => {
+export default function Contact() {
+  const [form, setForm] = useState(EMPTY)
+  const [status, setStatus] = useState('')
+  const [error, setError] = useState('')
+  const [sending, setSending] = useState(false)
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    setStatus('Thanks for reaching out! I\'ll get back to you soon.')
-    setForm({ name: '', email: '', title: '', message: '' })
+    setSending(true)
+    setStatus('')
+    setError('')
+    try {
+      const { data } = await blogApi.sendContactMessage(form)
+      setStatus(data.message)
+      setForm(EMPTY)
+    } catch (err) {
+      const detail = err.response?.data
+      if (err.response?.status === 429) {
+        setError('That is a lot of messages in a short time. Please try again later.')
+      } else {
+        setError(
+          detail?.name?.[0] || detail?.email?.[0] || detail?.subject?.[0] ||
+          detail?.message?.[0] || detail?.detail ||
+          'Could not send your message. Please try again.'
+        )
+      }
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -98,8 +122,8 @@ export default function Contact() {
               id="contact-subject"
               className="input"
               placeholder="What's this about?"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              value={form.subject}
+              onChange={(e) => setForm({ ...form, subject: e.target.value })}
               required
             />
           </div>
@@ -115,8 +139,24 @@ export default function Contact() {
               required
             />
           </div>
-          <button type="submit" className="btn btn--primary contact-form__submit">Send --&gt;</button>
+          {/* Honeypot: hidden from people, irresistible to bots. */}
+          <div className="honeypot" aria-hidden="true">
+            <label htmlFor="contact-website">Leave this field empty</label>
+            <input
+              id="contact-website"
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              value={form.website}
+              onChange={(e) => setForm({ ...form, website: e.target.value })}
+            />
+          </div>
+
+          <button type="submit" className="btn btn--primary contact-form__submit" disabled={sending}>
+            {sending ? 'Sending…' : 'Send -->'}
+          </button>
           {status && <p className="contact-form__status">{status}</p>}
+          {error && <p className="contact-form__error">{error}</p>}
         </form>
       </div>
     </main>

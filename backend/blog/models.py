@@ -17,7 +17,12 @@ class Category(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            base = slugify(self.name) or 'category'
+            self.slug = base
+            n = 1
+            while Category.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
+                self.slug = f'{base}-{n}'
+                n += 1
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -98,6 +103,27 @@ class Comment(models.Model):
 
     def __str__(self):
         return f'{self.author_name or "Anonymous"} on "{self.post.title}"'
+
+
+class ContactMessage(models.Model):
+    """A message sent through the public contact form.
+
+    Records are an inbox, not a moderation queue: nothing here is ever published,
+    so there is no approval step. `is_read` only tracks what has been triaged.
+    """
+
+    name = models.CharField(max_length=120)
+    email = models.EmailField()
+    subject = models.CharField(max_length=200)
+    message = models.TextField(max_length=5000)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.subject} — {self.email}'
 
 
 class Newsletter(models.Model):

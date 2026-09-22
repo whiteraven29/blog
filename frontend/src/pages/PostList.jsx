@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { blogApi } from '../api/client'
 import PostCard from '../components/PostCard'
@@ -17,6 +17,7 @@ export default function PostList() {
   const [loadedQuery, setLoadedQuery] = useState(null)
   const [hasNext, setHasNext] = useState(false)
   const [loadError, setLoadError] = useState('')
+  const [searchInput, setSearchInput] = useState(() => params.get('search') || '')
 
   const search = params.get('search') || ''
   const category = params.get('category__slug') || ''
@@ -59,13 +60,36 @@ export default function PostList() {
     blogApi.getTags().then(({ data }) => setTags(data.results || data))
   }, [])
 
-  const setFilter = (key, val) => {
+  const setFilter = useCallback((key, val, options) => {
     const next = new URLSearchParams(params)
     if (val) next.set(key, val)
     else next.delete(key)
     next.delete('page')
-    setParams(next)
-  }
+    setParams(next, options)
+  }, [params, setParams])
+
+  // Tracks the last value this component put into the URL, so a URL change made
+  // elsewhere (back button, "Clear filters") can be told apart from our own and
+  // will not overwrite what the visitor is still typing.
+  const syncedSearch = useRef(search)
+
+  useEffect(() => {
+    if (search !== syncedSearch.current) {
+      syncedSearch.current = search
+      setSearchInput(search)
+    }
+  }, [search])
+
+  useEffect(() => {
+    if (searchInput === syncedSearch.current) return
+
+    const timer = setTimeout(() => {
+      syncedSearch.current = searchInput
+      setFilter('search', searchInput, { replace: true })
+    }, 350)
+
+    return () => clearTimeout(timer)
+  }, [searchInput, setFilter])
 
   const setPage = (nextPage) => {
     const next = new URLSearchParams(params)
@@ -92,8 +116,8 @@ export default function PostList() {
           className="input"
           type="search"
           placeholder="Search posts..."
-          value={search}
-          onChange={(e) => setFilter('search', e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
         />
       </div>
 

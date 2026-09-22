@@ -30,6 +30,9 @@ export default function PostEditor() {
   const [error, setError] = useState('')
   const [lastSaved, setLastSaved] = useState(null)
   const [preview, setPreview] = useState('live')
+  const [newCategory, setNewCategory] = useState(null)
+  const [categoryError, setCategoryError] = useState('')
+  const [creatingCategory, setCreatingCategory] = useState(false)
 
   useEffect(() => {
     blogApi.getCategories().then(({ data }) => setCategories(data.results || data))
@@ -56,6 +59,38 @@ export default function PostEditor() {
   }, [slug, isNew])
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }))
+
+  const openCategoryForm = () => {
+    setCategoryError('')
+    setNewCategory({ name: '', color: '#a855f7' })
+  }
+
+  const closeCategoryForm = () => {
+    setCategoryError('')
+    setNewCategory(null)
+  }
+
+  const createCategory = async (e) => {
+    e.preventDefault()
+    const name = newCategory.name.trim()
+    if (!name) { setCategoryError('Name is required.'); return }
+
+    setCreatingCategory(true)
+    setCategoryError('')
+    try {
+      const { data } = await blogApi.createCategory({ name, color: newCategory.color })
+      setCategories((cs) => [...cs, data].sort((a, b) => a.name.localeCompare(b.name)))
+      set('category', data.id)
+      closeCategoryForm()
+    } catch (err) {
+      const detail = err.response?.data
+      setCategoryError(
+        detail?.name?.[0] || detail?.color?.[0] || detail?.detail || 'Could not create category.'
+      )
+    } finally {
+      setCreatingCategory(false)
+    }
+  }
 
   const buildPayload = (overrideStatus) => {
     const tagList = form.tags
@@ -147,7 +182,14 @@ export default function PostEditor() {
         {/* Sidebar */}
         <aside className="editor-sidebar">
           <div className="editor-field">
-            <label htmlFor="editor-category">Category</label>
+            <label htmlFor="editor-category">
+              Category
+              {!newCategory && (
+                <button type="button" className="editor-inline-add" onClick={openCategoryForm}>
+                  + new
+                </button>
+              )}
+            </label>
             <select
               id="editor-category"
               className="input"
@@ -159,6 +201,39 @@ export default function PostEditor() {
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
+
+            {newCategory && (
+              <form className="category-create" onSubmit={createCategory}>
+                <div className="category-create__row">
+                  <label className="sr-only" htmlFor="new-category-name">New category name</label>
+                  <input
+                    id="new-category-name"
+                    className="input"
+                    placeholder="Category name"
+                    value={newCategory.name}
+                    onChange={(e) => setNewCategory((c) => ({ ...c, name: e.target.value }))}
+                    autoFocus
+                  />
+                  <label className="sr-only" htmlFor="new-category-color">New category colour</label>
+                  <input
+                    id="new-category-color"
+                    className="category-create__color"
+                    type="color"
+                    value={newCategory.color}
+                    onChange={(e) => setNewCategory((c) => ({ ...c, color: e.target.value }))}
+                  />
+                </div>
+                {categoryError && <p className="category-create__error">{categoryError}</p>}
+                <div className="category-create__actions">
+                  <button type="submit" className="btn btn--primary" disabled={creatingCategory}>
+                    {creatingCategory ? 'Adding…' : 'Add'}
+                  </button>
+                  <button type="button" className="btn btn--ghost" onClick={closeCategoryForm}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
 
           <div className="editor-field">

@@ -36,7 +36,7 @@ export default function Home() {
       setSubMsg('Subscribed!')
       setEmail('')
     } catch {
-      setSubMsg('Already subscribed or invalid email.')
+      setSubMsg('That address was not accepted — check it and try again.')
     }
   }
 

@@ -131,6 +131,24 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'blog.pagination.StandardResultsSetPagination',
     'PAGE_SIZE': 12,
+    'DEFAULT_THROTTLE_RATES': {
+        'contact': '5/hour',
+    },
+    # nginx appends the real peer address to X-Forwarded-For, so the last entry
+    # is the only one a client cannot spoof. Without this, DRF hashes the whole
+    # header and a caller can dodge the rate limit by sending their own.
+    'NUM_PROXIES': 1,
+}
+
+# Throttle counters live in the cache. The default per-process backend would give
+# each of the gunicorn workers its own tally, letting through one limit per
+# worker, so the cache has to be shared. The database avoids running anything new
+# alongside the app; `manage.py createcachetable` provisions it.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'blog_cache_table',
+    }
 }
 
 SIMPLE_JWT = {

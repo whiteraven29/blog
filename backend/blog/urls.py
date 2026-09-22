@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('categories/', views.CategoryListView.as_view(), name='category-list'),
+    path('categories/', views.CategoryListCreateView.as_view(), name='category-list'),
     path('categories/<slug:slug>/', views.CategoryDetailView.as_view(), name='category-detail'),
     path('tags/', views.TagListView.as_view(), name='tag-list'),
     # fixed-segment routes must come before <slug> patterns
@@ -15,5 +15,6 @@ urlpatterns = [
     path('posts/<slug:slug>/edit/', views.PostUpdateView.as_view(), name='post-update'),
     path('search/', views.SearchView.as_view(), name='search'),
     path('newsletter/', views.newsletter_subscribe, name='newsletter'),
+    path('contact/', views.ContactMessageCreateView.as_view(), name='contact'),
     path('stats/', views.StatsView.as_view(), name='stats'),
 ]

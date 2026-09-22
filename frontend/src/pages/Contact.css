@@ -69,21 +69,25 @@ a.info-val:hover { color: var(--accent); }
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-.field__label {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  font-weight: 500;
-}
 .contact-form textarea.input { resize: vertical; }
 .contact-form__submit { align-self: flex-start; }
 .contact-form__status {
   font-size: 0.825rem;
   color: var(--success);
+}
+.contact-form__error {
+  font-size: 0.825rem;
+  color: var(--danger);
+}
+
+/* Moved out of view rather than display:none, which is the first thing a bot
+   checks before deciding whether to fill a field in. */
+.honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
 }
 
 @media (max-width: 768px) {

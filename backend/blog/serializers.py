@@ -1,14 +1,63 @@
+import re
+
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Category, Tag, Post, Comment, Newsletter
+from django.utils.html import strip_tags
+from .models import Category, Tag, Post, Comment, ContactMessage, Newsletter
+
+
+# Control characters serve no purpose in form input. DRF's CharField already
+# refuses NUL on its own — which matters, since PostgreSQL cannot store it in a
+# text column at all — so this covers the rest, and NUL for any future caller
+# that does not arrive through a CharField.
+CONTROL_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
+LINK_RE = re.compile(r'https?://|www\.', re.IGNORECASE)
+MAX_LINKS = 2
+
+
+def clean_text(value, *, single_line):
+    """Normalise submitted text to inert plain text.
+
+    This is hygiene, not the XSS control. Injected markup cannot execute anyway:
+    React escapes text nodes and the Django admin escapes its output. Stripping
+    tags on the way in means the stored copy stays plain no matter where it is
+    rendered later — an email notification, say, or a future template.
+    """
+    value = strip_tags(value)
+    value = CONTROL_CHARS_RE.sub('', value)
+    if single_line:
+        # Collapsing whitespace also removes the CR/LF that would let a crafted
+        # subject line inject extra headers into a notification email.
+        return ' '.join(value.split())
+    return value.strip()
+
+
+COLOR_RE = r'^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$'
 
 
 class CategorySerializer(serializers.ModelSerializer):
     post_count = serializers.SerializerMethodField()
+    color = serializers.RegexField(
+        COLOR_RE,
+        required=False,
+        error_messages={'invalid': 'Use a hex colour such as #a855f7.'},
+    )
 
     class Meta:
         model = Category
         fields = ['id', 'name', 'slug', 'description', 'color', 'post_count', 'created_at']
+        read_only_fields = ['slug', 'created_at']
+
+    def validate_name(self, value):
+        name = value.strip()
+        if not name:
+            raise serializers.ValidationError('Name cannot be blank.')
+        existing = Category.objects.filter(name__iexact=name)
+        if self.instance is not None:
+            existing = existing.exclude(pk=self.instance.pk)
+        if existing.exists():
+            raise serializers.ValidationError('A category with this name already exists.')
+        return name
 
     def get_post_count(self, obj):
         annotated_count = getattr(obj, 'published_post_count', None)
@@ -77,14 +126,21 @@ class PostListSerializer(serializers.ModelSerializer):
 
 class PostDetailSerializer(PostListSerializer):
     comments = serializers.SerializerMethodField()
-    comment_count = serializers.IntegerField(source='comments.filter(is_approved=True).count', read_only=True)
+    comment_count = serializers.SerializerMethodField()
 
     class Meta(PostListSerializer.Meta):
         fields = PostListSerializer.Meta.fields + ['content', 'comments', 'comment_count', 'updated_at']
 
+    def _approved_comments(self, obj):
+        # Filter in Python so the view's prefetch_related('comments') is reused
+        # instead of issuing a fresh query per field.
+        return [comment for comment in obj.comments.all() if comment.is_approved]
+
     def get_comments(self, obj):
-        approved = obj.comments.filter(is_approved=True)
-        return CommentSerializer(approved, many=True).data
+        return CommentSerializer(self._approved_comments(obj), many=True).data
+
+    def get_comment_count(self, obj):
+        return len(self._approved_comments(obj))
 
 
 class PostWriteSerializer(serializers.ModelSerializer):
@@ -142,6 +198,47 @@ class PostWriteSerializer(serializers.ModelSerializer):
 
 
 class NewsletterSerializer(serializers.ModelSerializer):
+    # Uniqueness is resolved in the view so that resubscribing looks identical to
+    # a first subscription; the default validator would report which addresses
+    # are already on the list.
+    email = serializers.EmailField(validators=[])
+
     class Meta:
         model = Newsletter
         fields = ['email']
+
+
+class ContactMessageSerializer(serializers.ModelSerializer):
+    # Bots fill in every field they find. A real browser leaves this one empty
+    # because it is hidden, so anything here marks the submission as automated.
+    website = serializers.CharField(required=False, allow_blank=True, write_only=True)
+
+    class Meta:
+        model = ContactMessage
+        fields = ['name', 'email', 'subject', 'message', 'website']
+
+    def validate_name(self, value):
+        name = clean_text(value, single_line=True)
+        if not name:
+            raise serializers.ValidationError('Please tell me your name.')
+        return name
+
+    def validate_subject(self, value):
+        subject = clean_text(value, single_line=True)
+        if not subject:
+            raise serializers.ValidationError('Please add a subject.')
+        return subject
+
+    def validate_message(self, value):
+        message = clean_text(value, single_line=False)
+        if len(message) < 10:
+            raise serializers.ValidationError('Please write a little more.')
+        if len(LINK_RE.findall(message)) > MAX_LINKS:
+            raise serializers.ValidationError(
+                'That is more links than this form accepts. Please describe them instead.'
+            )
+        return message
+
+    def create(self, validated_data):
+        validated_data.pop('website', None)
+        return super().create(validated_data)

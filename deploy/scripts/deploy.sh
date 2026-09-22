@@ -112,6 +112,7 @@ python3 -m venv "${RELEASE_DIR}/venv"
         "/var/www/scripts/${APP_NAME}/backup-db.sh"
     fi
     "${RELEASE_DIR}/venv/bin/python" manage.py migrate --noinput
+    "${RELEASE_DIR}/venv/bin/python" manage.py createcachetable
     "${RELEASE_DIR}/venv/bin/python" manage.py collectstatic --noinput
 )
 

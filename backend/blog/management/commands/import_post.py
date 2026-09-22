@@ -70,10 +70,6 @@ class Command(BaseCommand):
         if status not in ('draft', 'published'):
             status = 'draft'
 
-        published_at = None
-        if status == 'published':
-            published_at = timezone.now()
-
         # ---- Build fields ----
         fields = {
             'author': author,
@@ -84,22 +80,34 @@ class Command(BaseCommand):
             'status': status,
             'is_featured': bool(meta.get('featured', False)),
             'read_time': int(meta.get('read_time', max(1, len(content.split()) // 200))),
-            'published_at': published_at,
         }
 
         # ---- Create or update ----
-        if options['update']:
-            post, created = Post.objects.update_or_create(
-                title=title,
-                defaults=fields,
+        # `title` is not unique, so match the oldest post carrying it rather than
+        # letting update_or_create() raise MultipleObjectsReturned.
+        existing = Post.objects.filter(title=title).order_by('created_at').first()
+
+        if existing and not options['update']:
+            raise CommandError(
+                f'A post titled "{title}" already exists. Use --update to overwrite it.'
             )
-            verb = 'Created' if created else 'Updated'
+
+        if existing:
+            for field, value in fields.items():
+                setattr(existing, field, value)
+            # Keep the original publication date; only stamp one on first publish.
+            if status == 'published' and not existing.published_at:
+                existing.published_at = timezone.now()
+            elif status != 'published':
+                existing.published_at = None
+            existing.save()
+            post, verb = existing, 'Updated'
         else:
-            if Post.objects.filter(title=title).exists():
-                raise CommandError(
-                    f'A post titled "{title}" already exists. Use --update to overwrite it.'
-                )
-            post = Post.objects.create(title=title, **fields)
+            post = Post.objects.create(
+                title=title,
+                published_at=timezone.now() if status == 'published' else None,
+                **fields,
+            )
             verb = 'Created'
 
         post.tags.set(tags)
