@@ -73,8 +73,8 @@ cd /var/www/tmp/whiteraven-blog/bootstrap-source
 sudo /var/www/scripts/whiteraven-blog/deploy.sh "$PWD"
 sudo systemctl enable --now whiteraven-blog
 sudo systemctl enable --now nginx
-sudo certbot --nginx -d blog.example.com
-curl --fail https://blog.example.com/api/health/
+sudo certbot --nginx -d blog.wh1teraven.site
+curl --fail https://blog.wh1teraven.site/api/health/
 ```
 
 Every deployment after the first creates a database backup before migrations.
@@ -98,16 +98,25 @@ sudo APP_BRANCH=release /var/www/scripts/whiteraven-blog/deploy.sh
 sudo /var/www/scripts/whiteraven-blog/deploy.sh /path/to/checked-out/source
 ```
 
-When `deploy/nginx/whiteraven-blog.conf` changes, install the updated site
-configuration before deploying so root-level endpoints such as `sitemap.xml`
-and `rss.xml` reach Django:
+When `deploy/nginx/whiteraven-blog.conf` changes, merge the update into the
+installed site configuration so root-level endpoints such as `sitemap.xml` and
+`rss.xml` reach Django.
+
+Do not `install` the repository copy over the live one. The installed file holds
+the real `server_name` and the TLS block certbot wrote in place; neither is in
+the repository, and overwriting them takes the site off its own domain. Requests
+then fall through to whatever other vhost listens on that port.
 
 ```bash
-sudo install -m 0644 deploy/nginx/whiteraven-blog.conf \
-  /etc/nginx/sites-available/whiteraven-blog
+diff -u /etc/nginx/sites-available/whiteraven-blog \
+  deploy/nginx/whiteraven-blog.conf
+sudoedit /etc/nginx/sites-available/whiteraven-blog   # apply the changes by hand
 sudo nginx -t
 sudo systemctl reload nginx
 ```
+
+If the installed copy was overwritten, restore the domain in `server_name` and
+re-run `sudo certbot --nginx -d <domain>` to rebuild the TLS block.
 
 ## Backups and rollback
 

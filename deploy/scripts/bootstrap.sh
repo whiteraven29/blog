@@ -34,7 +34,15 @@ install -o root -g www-data -m 0750 "${REPO_ROOT}/deploy/scripts/deploy.sh" "${S
 install -o root -g www-data -m 0750 "${REPO_ROOT}/deploy/scripts/rollback.sh" "${SCRIPT_ROOT}/rollback.sh"
 install -o root -g www-data -m 0750 "${REPO_ROOT}/deploy/scripts/backup-db.sh" "${SCRIPT_ROOT}/backup-db.sh"
 install -o root -g root -m 0644 "${REPO_ROOT}/deploy/systemd/whiteraven-blog.service" /etc/systemd/system/whiteraven-blog.service
-install -o root -g root -m 0644 "${REPO_ROOT}/deploy/nginx/whiteraven-blog.conf" /etc/nginx/sites-available/whiteraven-blog
+if [[ ! -f /etc/nginx/sites-available/whiteraven-blog ]]; then
+    install -o root -g root -m 0644 "${REPO_ROOT}/deploy/nginx/whiteraven-blog.conf" /etc/nginx/sites-available/whiteraven-blog
+    echo "Installed the nginx site; set server_name before enabling TLS."
+else
+    # Overwriting would drop the live server_name and the TLS block certbot
+    # wrote there, sending the domain to whichever vhost answers that port next.
+    echo "Kept the existing nginx site config. Compare it against the repository copy:"
+    echo "  diff -u /etc/nginx/sites-available/whiteraven-blog ${REPO_ROOT}/deploy/nginx/whiteraven-blog.conf"
+fi
 install -o root -g root -m 0644 "${REPO_ROOT}/deploy/logrotate/whiteraven-blog" /etc/logrotate.d/whiteraven-blog
 rm -f /etc/nginx/sites-enabled/default
 ln -sfn /etc/nginx/sites-available/whiteraven-blog /etc/nginx/sites-enabled/whiteraven-blog
