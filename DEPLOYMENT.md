@@ -149,7 +149,10 @@ minutes. `bootstrap.sh` installs it on a new server. A server bootstrapped
 before the newsletter existed needs it installed once:
 
 ```bash
-sudo install -m 0644 deploy/systemd/whiteraven-blog-newsletter.{service,timer} /etc/systemd/system/
+sudo install -m 0644 \
+  /var/www/apps/whiteraven-blog/current/deploy/systemd/whiteraven-blog-newsletter.service \
+  /var/www/apps/whiteraven-blog/current/deploy/systemd/whiteraven-blog-newsletter.timer \
+  /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now whiteraven-blog-newsletter.timer
 ```
