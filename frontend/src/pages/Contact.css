@@ -80,16 +80,6 @@ a.info-val:hover { color: var(--accent); }
   color: var(--danger);
 }
 
-/* Moved out of view rather than display:none, which is the first thing a bot
-   checks before deciding whether to fill a field in. */
-.honeypot {
-  position: absolute;
-  left: -9999px;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-}
-
 @media (max-width: 768px) {
   .contact-layout { grid-template-columns: 1fr; }
   .form-row { grid-template-columns: 1fr; }

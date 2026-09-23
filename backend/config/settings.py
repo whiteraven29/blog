@@ -134,6 +134,11 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'contact': '5/hour',
         'comment': '10/hour',
+        'newsletter': '5/hour',
+        # Confirm and unsubscribe links carry unguessable tokens, so this only
+        # stops hammering. It stays generous because mail providers send
+        # one-click unsubscribes for many readers from a few shared addresses.
+        'newsletter-token': '60/minute',
     },
     # nginx appends the real peer address to X-Forwarded-For, so the last entry
     # is the only one a client cannot spoof. Without this, DRF hashes the whole
@@ -193,3 +198,39 @@ LOGGING = {
         'level': os.environ.get('DJANGO_LOG_LEVEL', 'INFO'),
     },
 }
+
+# Email. With no SMTP host configured, mail is printed to the console instead of
+# sent, which is what local development wants.
+SITE_NAME = os.environ.get('SITE_NAME', 'wh1t3r4v3n')
+# Public address of the frontend, used to build the links inside emails.
+SITE_URL = os.environ.get('SITE_URL', 'http://localhost:5173').rstrip('/')
+
+EMAIL_HOST = os.environ.get('DJANGO_EMAIL_HOST', '')
+if EMAIL_HOST:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_PORT = int(os.environ.get('DJANGO_EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.environ.get('DJANGO_EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('DJANGO_EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = env_bool('DJANGO_EMAIL_USE_TLS', True)
+# A stalled SMTP server would otherwise hold a gunicorn worker indefinitely.
+EMAIL_TIMEOUT = int(os.environ.get('DJANGO_EMAIL_TIMEOUT', '15'))
+DEFAULT_FROM_EMAIL = os.environ.get('DJANGO_DEFAULT_FROM_EMAIL', f'{SITE_NAME} <noreply@localhost>')
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+# Where contact-form messages are forwarded. Empty means they are only stored.
+CONTACT_NOTIFY_EMAIL = os.environ.get('CONTACT_NOTIFY_EMAIL', '')
+
+# Brevo's free plan allows 300 emails a day. New-post mail stops at this many per
+# rolling 24 hours and picks up where it left off on a later run, leaving room
+# for confirmation and contact emails.
+NEWSLETTER_DAILY_SEND_LIMIT = int(os.environ.get('NEWSLETTER_DAILY_SEND_LIMIT', '250'))
+# Caps confirmation emails across all sign-ups, so a botnet cycling through
+# addresses cannot spend the sending quota or the domain's reputation.
+NEWSLETTER_CONFIRMATIONS_PER_HOUR = int(os.environ.get('NEWSLETTER_CONFIRMATIONS_PER_HOUR', '30'))
+NEWSLETTER_CONFIRMATION_COOLDOWN = timedelta(minutes=15)
+NEWSLETTER_CONFIRMATION_MAX_AGE = timedelta(days=3)
+# Posts published longer ago than this are never mailed out, so turning email on
+# late, or republishing an old post, cannot surprise every subscriber.
+NEWSLETTER_MAX_POST_AGE = timedelta(days=7)

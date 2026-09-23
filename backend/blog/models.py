@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.text import slugify
+import secrets
 import uuid
 
 
@@ -70,6 +71,9 @@ class Post(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     published_at = models.DateTimeField(null=True, blank=True)
+    # Set once subscribers have been emailed about this post, or once it has been
+    # deliberately skipped. `send_newsletter` only looks at posts where it is empty.
+    newsletter_sent_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-published_at', '-created_at']
@@ -128,10 +132,64 @@ class ContactMessage(models.Model):
         return f'{self.subject} — {self.email}'
 
 
+def new_unsubscribe_token():
+    return secrets.token_urlsafe(32)
+
+
+class NewsletterQuerySet(models.QuerySet):
+    def receiving(self):
+        """Addresses that confirmed and have not unsubscribed since."""
+        return self.filter(is_active=True, confirmed_at__isnull=False)
+
+
 class Newsletter(models.Model):
+    """A newsletter subscriber.
+
+    Mail about new posts only goes to addresses that are active and confirmed.
+    Anyone can type any address into the sign-up form, so an unconfirmed address
+    only ever receives the one confirmation email.
+    """
+
     email = models.EmailField(unique=True)
     subscribed_at = models.DateTimeField(auto_now_add=True)
+    # False once the reader unsubscribes.
     is_active = models.BooleanField(default=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    # Also what the confirmation link is bound to, so sending a new link, or
+    # unsubscribing, invalidates every earlier one.
+    confirmation_sent_at = models.DateTimeField(null=True, blank=True)
+    unsubscribed_at = models.DateTimeField(null=True, blank=True)
+    # Random rather than signed, so a link keeps working if SECRET_KEY rotates.
+    unsubscribe_token = models.CharField(
+        max_length=64, unique=True, default=new_unsubscribe_token, editable=False
+    )
+
+    objects = NewsletterQuerySet.as_manager()
+
+    @property
+    def is_receiving(self):
+        return self.is_active and self.confirmed_at is not None
 
     def __str__(self):
         return self.email
+
+
+class NewsletterDelivery(models.Model):
+    """One post emailed to one subscriber.
+
+    A row is written before the email is sent and removed if sending fails, so a
+    run that is interrupted, or two that overlap, never mail anyone twice.
+    """
+
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='newsletter_deliveries')
+    subscriber = models.ForeignKey(Newsletter, on_delete=models.CASCADE, related_name='deliveries')
+    sent_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name_plural = 'newsletter deliveries'
+        constraints = [
+            models.UniqueConstraint(fields=['post', 'subscriber'], name='unique_newsletter_delivery'),
+        ]
+
+    def __str__(self):
+        return f'{self.post} → {self.subscriber}'

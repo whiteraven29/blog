@@ -1,0 +1,10 @@
+{% autoescape off %}New post on {{ site_name }}: {{ post.title }}
+{% if post.excerpt %}
+{{ post.excerpt|truncatechars:400 }}
+{% endif %}
+Read it: {{ post_url }}
+
+--
+You're getting this because you subscribed to {{ site_name }}.
+Unsubscribe: {{ unsubscribe_url }}
+{% endautoescape %}

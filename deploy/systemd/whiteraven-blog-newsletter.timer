@@ -1,0 +1,12 @@
+[Unit]
+Description=Email subscribers about new wh1t3r4v3n Blog posts
+
+# Every ten minutes. The wait doubles as a grace period: a post unpublished again
+# within a few minutes of going out never reaches anyone's inbox.
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

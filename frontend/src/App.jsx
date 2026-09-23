@@ -17,6 +17,7 @@ const Contact = lazy(() => import('./pages/Contact'))
 const Login = lazy(() => import('./pages/Login'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const PostEditor = lazy(() => import('./pages/PostEditor'))
+const NewsletterLink = lazy(() => import('./pages/NewsletterLink'))
 
 function NotFound() {
   return (
@@ -45,6 +46,8 @@ function Shell() {
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/newsletter/confirm" element={<NewsletterLink action="confirm" />} />
+              <Route path="/newsletter/unsubscribe" element={<NewsletterLink action="unsubscribe" />} />
               <Route path="/dashboard" element={
                 <ProtectedRoute><Dashboard /></ProtectedRoute>
               } />

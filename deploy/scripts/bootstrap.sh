@@ -34,6 +34,8 @@ install -o root -g www-data -m 0750 "${REPO_ROOT}/deploy/scripts/deploy.sh" "${S
 install -o root -g www-data -m 0750 "${REPO_ROOT}/deploy/scripts/rollback.sh" "${SCRIPT_ROOT}/rollback.sh"
 install -o root -g www-data -m 0750 "${REPO_ROOT}/deploy/scripts/backup-db.sh" "${SCRIPT_ROOT}/backup-db.sh"
 install -o root -g root -m 0644 "${REPO_ROOT}/deploy/systemd/whiteraven-blog.service" /etc/systemd/system/whiteraven-blog.service
+install -o root -g root -m 0644 "${REPO_ROOT}/deploy/systemd/whiteraven-blog-newsletter.service" /etc/systemd/system/whiteraven-blog-newsletter.service
+install -o root -g root -m 0644 "${REPO_ROOT}/deploy/systemd/whiteraven-blog-newsletter.timer" /etc/systemd/system/whiteraven-blog-newsletter.timer
 if [[ ! -f /etc/nginx/sites-available/whiteraven-blog ]]; then
     install -o root -g root -m 0644 "${REPO_ROOT}/deploy/nginx/whiteraven-blog.conf" /etc/nginx/sites-available/whiteraven-blog
     echo "Installed the nginx site; set server_name before enabling TLS."
@@ -53,6 +55,7 @@ if [[ ! -f "${SHARED_ROOT}/.env" ]]; then
 fi
 
 systemctl daemon-reload
+systemctl enable --now whiteraven-blog-newsletter.timer
 nginx -t
 
 echo "Bootstrap complete."

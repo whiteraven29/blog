@@ -12,7 +12,10 @@ export default function Home() {
   const [categories, setCategories] = useState([])
   const [stats, setStats] = useState(null)
   const [email, setEmail] = useState('')
+  const [website, setWebsite] = useState('')
   const [subMsg, setSubMsg] = useState('')
+  const [subError, setSubError] = useState(false)
+  const [subscribing, setSubscribing] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -31,12 +34,21 @@ export default function Home() {
 
   const handleSubscribe = async (e) => {
     e.preventDefault()
+    setSubscribing(true)
     try {
-      await blogApi.subscribe(email)
-      setSubMsg('Subscribed!')
+      const { data } = await blogApi.subscribe({ email, website })
+      setSubMsg(data.message)
+      setSubError(false)
       setEmail('')
-    } catch {
-      setSubMsg('That address was not accepted — check it and try again.')
+    } catch (err) {
+      setSubError(true)
+      setSubMsg(
+        err.response?.status === 429
+          ? 'Too many attempts from here. Please try again later.'
+          : 'That address was not accepted — check it and try again.'
+      )
+    } finally {
+      setSubscribing(false)
     }
   }
 
@@ -155,9 +167,27 @@ export default function Home() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <button type="submit" className="btn btn--primary">Subscribe</button>
+            {/* Honeypot: hidden from people, irresistible to bots. */}
+            <div className="honeypot" aria-hidden="true">
+              <label htmlFor="newsletter-website">Leave this field empty</label>
+              <input
+                id="newsletter-website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+              />
+            </div>
+            <button type="submit" className="btn btn--primary" disabled={subscribing}>
+              {subscribing ? 'Sending…' : 'Subscribe'}
+            </button>
           </form>
-          {subMsg && <p className="newsletter__msg">{subMsg}</p>}
+          {subMsg && (
+            <p className={`newsletter__msg${subError ? ' newsletter__msg--error' : ''}`} role="status">
+              {subMsg}
+            </p>
+          )}
         </div>
       </section>
     </main>

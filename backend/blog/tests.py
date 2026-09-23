@@ -1,15 +1,21 @@
 import json
+import re
+from datetime import timedelta
 from io import StringIO
+from unittest import mock
+from urllib.parse import parse_qs, urlparse
 
 from django.contrib.auth.models import User
+from django.core import mail
 from django.core.cache import cache
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
-from .models import Category, Comment, ContactMessage, Newsletter, Post, Tag
+from . import newsletter
+from .models import Category, Comment, ContactMessage, Newsletter, NewsletterDelivery, Post, Tag
 
 
 class BlogApiTests(APITestCase):
@@ -264,14 +270,6 @@ class BlogApiTests(APITestCase):
         self.assertEqual(first.data, second.data)
         self.assertEqual(Newsletter.objects.filter(email='reader@example.com').count(), 1)
 
-    def test_resubscribing_reactivates_a_cancelled_address(self):
-        Newsletter.objects.create(email='reader@example.com', is_active=False)
-
-        response = self.client.post(reverse('newsletter'), {'email': 'reader@example.com'})
-
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(Newsletter.objects.get(email='reader@example.com').is_active)
-
     def test_malformed_subscription_email_is_rejected(self):
         response = self.client.post(reverse('newsletter'), {'email': 'not-an-email'})
 
@@ -458,3 +456,349 @@ class ContactFormTests(APITestCase):
 
         self.assertEqual(blocked.status_code, 429)
         self.assertEqual(ContactMessage.objects.count(), 5)
+
+
+def token_from(message, path):
+    url = re.search(rf'{re.escape(path)}\?token=\S+', message.body).group(0)
+    return parse_qs(urlparse(url).query)['token'][0]
+
+
+class NewsletterSubscriptionTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+
+    def subscribe(self, email='reader@example.com', **extra):
+        return self.client.post(reverse('newsletter'), {'email': email, **extra}, format='json')
+
+    def confirm(self, token):
+        return self.client.post(reverse('newsletter-confirm'), {'token': token}, format='json')
+
+    def subscribe_and_confirm(self, email='reader@example.com'):
+        self.subscribe(email)
+        self.confirm(token_from(mail.outbox[-1], '/newsletter/confirm'))
+        return Newsletter.objects.get(email=email)
+
+    def test_signing_up_sends_a_confirmation_and_nothing_more(self):
+        response = self.subscribe()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['reader@example.com'])
+        self.assertIn('/newsletter/confirm?token=', mail.outbox[0].body)
+        self.assertFalse(Newsletter.objects.get().is_receiving)
+
+    def test_confirmation_link_starts_the_subscription(self):
+        subscriber = self.subscribe_and_confirm()
+
+        self.assertTrue(subscriber.is_receiving)
+
+    def test_response_is_the_same_for_new_pending_and_confirmed_addresses(self):
+        new = self.subscribe('new@example.com')
+        self.subscribe_and_confirm('confirmed@example.com')
+        confirmed = self.subscribe('confirmed@example.com')
+        pending = self.subscribe('new@example.com')
+
+        self.assertEqual(new.data, confirmed.data)
+        self.assertEqual(new.data, pending.data)
+
+    def test_confirmed_address_is_not_emailed_again(self):
+        self.subscribe_and_confirm()
+        mail.outbox.clear()
+
+        self.subscribe()
+
+        self.assertEqual(mail.outbox, [])
+
+    def test_repeat_signups_for_one_address_are_cooled_down(self):
+        self.subscribe()
+        self.subscribe()
+        self.assertEqual(len(mail.outbox), 1)
+
+        Newsletter.objects.update(confirmation_sent_at=timezone.now() - timedelta(minutes=16))
+        self.subscribe()
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_only_the_latest_confirmation_link_works(self):
+        self.subscribe()
+        first = token_from(mail.outbox[0], '/newsletter/confirm')
+        Newsletter.objects.update(confirmation_sent_at=timezone.now() - timedelta(minutes=16))
+        self.subscribe()
+
+        self.assertEqual(self.confirm(first).status_code, 400)
+        self.assertEqual(self.confirm(token_from(mail.outbox[1], '/newsletter/confirm')).status_code, 200)
+
+    @override_settings(NEWSLETTER_CONFIRMATION_MAX_AGE=timedelta(seconds=-1))
+    def test_expired_confirmation_link_is_refused(self):
+        self.subscribe()
+
+        response = self.confirm(token_from(mail.outbox[0], '/newsletter/confirm'))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Newsletter.objects.get().is_receiving)
+
+    def test_forged_confirmation_token_is_refused(self):
+        self.subscribe()
+        token = token_from(mail.outbox[0], '/newsletter/confirm')
+
+        self.assertEqual(self.confirm(token[:-2] + 'xx').status_code, 400)
+        self.assertEqual(self.confirm('not-a-token').status_code, 400)
+
+    @override_settings(NEWSLETTER_CONFIRMATIONS_PER_HOUR=2)
+    def test_confirmation_emails_are_capped_across_all_addresses(self):
+        for index in range(3):
+            self.client.credentials(REMOTE_ADDR=f'10.0.0.{index}')
+            self.assertEqual(self.subscribe(f'reader{index}@example.com').status_code, 200)
+
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_honeypot_signup_is_answered_but_ignored(self):
+        response = self.subscribe(website='http://spam.example')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Newsletter.objects.exists())
+        self.assertEqual(mail.outbox, [])
+
+    def test_signups_are_rate_limited_per_client(self):
+        for index in range(5):
+            self.assertEqual(self.subscribe(f'reader{index}@example.com').status_code, 200)
+
+        self.assertEqual(self.subscribe('late@example.com').status_code, 429)
+
+    def test_confirmation_failure_does_not_start_the_cooldown(self):
+        with mock.patch('django.core.mail.EmailMultiAlternatives.send', side_effect=OSError):
+            self.assertEqual(self.subscribe().status_code, 200)
+
+        self.assertIsNone(Newsletter.objects.get().confirmation_sent_at)
+        self.subscribe()
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_unsubscribe_link_stops_mail(self):
+        subscriber = self.subscribe_and_confirm()
+
+        response = self.client.post(
+            reverse('newsletter-unsubscribe'), {'token': subscriber.unsubscribe_token}, format='json'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        subscriber.refresh_from_db()
+        self.assertFalse(subscriber.is_receiving)
+        self.assertIsNotNone(subscriber.unsubscribed_at)
+
+    def test_one_click_unsubscribe_from_mail_client(self):
+        subscriber = self.subscribe_and_confirm()
+
+        # RFC 8058: form-encoded body, token in the List-Unsubscribe URL.
+        response = self.client.post(
+            f"{reverse('newsletter-unsubscribe')}?token={subscriber.unsubscribe_token}",
+            'List-Unsubscribe=One-Click',
+            content_type='application/x-www-form-urlencoded',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        subscriber.refresh_from_db()
+        self.assertFalse(subscriber.is_active)
+
+    def test_unsubscribe_ignores_a_stale_login_token(self):
+        subscriber = self.subscribe_and_confirm()
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer expired.or.garbage')
+
+        response = self.client.post(
+            reverse('newsletter-unsubscribe'), {'token': subscriber.unsubscribe_token}, format='json'
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_opening_the_unsubscribe_url_does_not_unsubscribe(self):
+        subscriber = self.subscribe_and_confirm()
+
+        response = self.client.get(
+            f"{reverse('newsletter-unsubscribe')}?token={subscriber.unsubscribe_token}"
+        )
+
+        self.assertEqual(response.status_code, 405)
+        subscriber.refresh_from_db()
+        self.assertTrue(subscriber.is_receiving)
+
+    def test_unknown_unsubscribe_token_is_refused(self):
+        response = self.client.post(
+            reverse('newsletter-unsubscribe'), {'token': 'nope'}, format='json'
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_resubscribing_after_unsubscribing_needs_a_new_confirmation(self):
+        subscriber = self.subscribe_and_confirm()
+        newsletter.unsubscribe(subscriber.unsubscribe_token)
+        mail.outbox.clear()
+
+        self.subscribe()
+
+        subscriber.refresh_from_db()
+        self.assertTrue(subscriber.is_active)
+        self.assertFalse(subscriber.is_receiving)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_unsubscribing_voids_an_outstanding_confirmation_link(self):
+        self.subscribe()
+        token = token_from(mail.outbox[0], '/newsletter/confirm')
+        newsletter.unsubscribe(Newsletter.objects.get().unsubscribe_token)
+
+        self.assertEqual(self.confirm(token).status_code, 400)
+        self.assertFalse(Newsletter.objects.get().is_active)
+
+
+class NewsletterSendingTests(TestCase):
+    def setUp(self):
+        self.author = User.objects.create_user(username='author', password='safe-password')
+        self.reader = Newsletter.objects.create(email='reader@example.com', confirmed_at=timezone.now())
+        Newsletter.objects.create(email='pending@example.com')
+        Newsletter.objects.create(
+            email='gone@example.com', confirmed_at=timezone.now(), is_active=False
+        )
+
+    def publish(self, title='Fresh post', **fields):
+        fields.setdefault('status', 'published')
+        fields.setdefault('published_at', timezone.now())
+        return Post.objects.create(title=title, author=self.author, content='Body', **fields)
+
+    def test_new_post_goes_only_to_confirmed_active_subscribers(self):
+        post = self.publish()
+
+        sent = newsletter.send_new_posts()
+
+        self.assertEqual(sent, 1)
+        self.assertEqual([message.to for message in mail.outbox], [['reader@example.com']])
+        self.assertIn(f'/posts/{post.slug}', mail.outbox[0].body)
+        post.refresh_from_db()
+        self.assertIsNotNone(post.newsletter_sent_at)
+
+    def test_post_email_carries_unsubscribe_link_and_one_click_headers(self):
+        self.publish()
+
+        newsletter.send_new_posts()
+
+        message = mail.outbox[0]
+        token = self.reader.unsubscribe_token
+        self.assertIn(f'/newsletter/unsubscribe?token={token}', message.body)
+        self.assertIn(f'/api/blog/newsletter/unsubscribe/?token={token}', message.extra_headers['List-Unsubscribe'])
+        self.assertEqual(message.extra_headers['List-Unsubscribe-Post'], 'List-Unsubscribe=One-Click')
+
+    def test_a_post_is_only_ever_sent_once(self):
+        self.publish()
+
+        newsletter.send_new_posts()
+        newsletter.send_new_posts()
+
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_drafts_scheduled_and_old_posts_are_not_sent(self):
+        self.publish('Draft', status='draft')
+        self.publish('Scheduled', published_at=timezone.now() + timedelta(days=1))
+        old = self.publish('Old', published_at=timezone.now() - timedelta(days=30))
+
+        self.assertEqual(newsletter.send_new_posts(), 0)
+
+        old.refresh_from_db()
+        self.assertIsNotNone(old.newsletter_sent_at)
+        self.assertEqual(mail.outbox, [])
+
+    @override_settings(NEWSLETTER_DAILY_SEND_LIMIT=2)
+    def test_daily_limit_pauses_and_a_later_run_resumes(self):
+        for index in range(3):
+            Newsletter.objects.create(email=f'extra{index}@example.com', confirmed_at=timezone.now())
+        post = self.publish()
+
+        self.assertEqual(newsletter.send_new_posts(), 2)
+        post.refresh_from_db()
+        self.assertIsNone(post.newsletter_sent_at)
+
+        NewsletterDelivery.objects.update(sent_at=timezone.now() - timedelta(days=2))
+        self.assertEqual(newsletter.send_new_posts(), 2)
+
+        self.assertEqual(len({tuple(message.to) for message in mail.outbox}), 4)
+        post.refresh_from_db()
+        self.assertIsNotNone(post.newsletter_sent_at)
+
+    def test_failed_send_is_retried_on_the_next_run(self):
+        self.publish()
+
+        with mock.patch('django.core.mail.EmailMultiAlternatives.send', side_effect=OSError):
+            with self.assertRaises(OSError):
+                newsletter.send_new_posts()
+        self.assertFalse(NewsletterDelivery.objects.exists())
+
+        self.assertEqual(newsletter.send_new_posts(), 1)
+
+    def test_dry_run_sends_and_records_nothing(self):
+        post = self.publish()
+
+        newsletter.send_new_posts(dry_run=True, log=lambda line: None)
+
+        self.assertEqual(mail.outbox, [])
+        self.assertFalse(NewsletterDelivery.objects.exists())
+        post.refresh_from_db()
+        self.assertIsNone(post.newsletter_sent_at)
+
+    def test_post_title_is_escaped_in_the_html_email(self):
+        self.publish('<script>alert(1)</script>')
+
+        newsletter.send_new_posts()
+
+        html = mail.outbox[0].alternatives[0][0]
+        self.assertNotIn('<script>alert(1)', html)
+        self.assertIn('&lt;script&gt;', html)
+
+    @override_settings(DEBUG=False, EMAIL_HOST='')
+    def test_command_refuses_to_run_without_smtp_in_production(self):
+        post = self.publish()
+        stderr = StringIO()
+
+        call_command('send_newsletter', stdout=StringIO(), stderr=stderr)
+
+        self.assertIn('not configured', stderr.getvalue())
+        post.refresh_from_db()
+        self.assertIsNone(post.newsletter_sent_at)
+
+
+class ContactNotificationTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+
+    def send(self, **overrides):
+        data = {
+            'name': 'Reader',
+            'email': 'reader@example.com',
+            'subject': 'Collaboration',
+            'message': 'I would like to talk about a security assessment.',
+            **overrides,
+        }
+        return self.client.post(reverse('contact'), data, format='json')
+
+    @override_settings(CONTACT_NOTIFY_EMAIL='owner@example.com')
+    def test_message_is_forwarded_with_reply_to_the_sender(self):
+        self.send()
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['owner@example.com'])
+        self.assertEqual(mail.outbox[0].reply_to, ['reader@example.com'])
+        self.assertIn('security assessment', mail.outbox[0].body)
+
+    @override_settings(CONTACT_NOTIFY_EMAIL='owner@example.com')
+    def test_honeypot_message_is_not_forwarded(self):
+        self.send(website='http://spam.example')
+
+        self.assertEqual(mail.outbox, [])
+
+    @override_settings(CONTACT_NOTIFY_EMAIL='owner@example.com')
+    def test_mail_failure_still_stores_the_message(self):
+        with mock.patch('django.core.mail.EmailMultiAlternatives.send', side_effect=OSError):
+            response = self.send()
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(ContactMessage.objects.exists())
+
+    @override_settings(CONTACT_NOTIFY_EMAIL='')
+    def test_nothing_is_sent_without_a_notify_address(self):
+        self.send()
+
+        self.assertEqual(mail.outbox, [])

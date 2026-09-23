@@ -144,6 +144,7 @@
 }
 .newsletter__form .input { flex: 1; }
 .newsletter__msg { font-size: 0.8rem; color: var(--accent); }
+.newsletter__msg--error { color: var(--danger); }
 
 @media (max-width: 768px) {
   .hero {

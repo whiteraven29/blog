@@ -45,7 +45,9 @@ export const blogApi = {
   search: (q) => client.get('/blog/search/', { params: { q } }),
   getStats: () => client.get('/blog/stats/'),
   addComment: (slug, data) => client.post(`/blog/posts/${slug}/comments/`, data),
-  subscribe: (email) => client.post('/blog/newsletter/', { email }),
+  subscribe: (data) => client.post('/blog/newsletter/', data),
+  confirmSubscription: (token) => client.post('/blog/newsletter/confirm/', { token }),
+  unsubscribe: (token) => client.post('/blog/newsletter/unsubscribe/', { token }),
   sendContactMessage: (data) => client.post('/blog/contact/', data),
   // editor
   myPosts: () => client.get('/blog/posts/mine/'),

@@ -205,6 +205,16 @@ img {
 }
 
 /* Page furniture */
+/* Moved out of view rather than display:none, which is the first thing a bot
+   checks before deciding whether to fill a field in. */
+.honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
 .page-header {
   margin-bottom: 1.5rem;
 }

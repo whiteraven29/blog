@@ -1,0 +1,8 @@
+{% autoescape off %}Confirm your subscription to {{ site_name }}
+
+Someone, hopefully you, asked to get an email from {{ site_name }} whenever a new post goes up. Open this link to confirm:
+
+{{ confirm_url }}
+
+The link works for {{ valid_days }} days. If you didn't sign up, ignore this email and you won't hear from us again.
+{% endautoescape %}

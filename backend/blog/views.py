@@ -1,19 +1,20 @@
 from rest_framework import generics, permissions, filters, status
 from rest_framework.throttling import ScopedRateThrottle
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, F, Q, Sum
-from .models import Category, Tag, Post, Comment, Newsletter
+from . import newsletter
+from .models import Category, Tag, Post, Comment
 from .serializers import (
     CategorySerializer, TagSerializer, PostListSerializer,
     PostDetailSerializer, PostWriteSerializer, CommentSerializer,
-    NewsletterSerializer, ContactMessageSerializer,
+    NewsletterSerializer, NewsletterTokenSerializer, ContactMessageSerializer,
 )
 
 
 CONTACT_ACK = {'message': "Thanks for reaching out — I'll get back to you soon."}
+SUBSCRIBE_ACK = {'message': 'Almost done: check your inbox for a link to confirm your subscription.'}
 
 
 class IsAuthorOrReadOnly(permissions.BasePermission):
@@ -164,22 +165,63 @@ class SearchView(generics.ListAPIView):
         ).distinct().order_by('-published_at')
 
 
-@api_view(['POST'])
-@permission_classes([permissions.AllowAny])
-def newsletter_subscribe(request):
-    serializer = NewsletterSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class NewsletterSubscribeView(APIView):
+    """Start a double opt-in subscription.
 
-    email = serializer.validated_data['email'].lower()
-    subscriber, created = Newsletter.objects.get_or_create(email=email)
-    if not created and not subscriber.is_active:
-        subscriber.is_active = True
-        subscriber.save(update_fields=['is_active'])
+    Every valid address gets the same answer, whether it is new, already
+    subscribed or waiting on confirmation, so the endpoint cannot be used to
+    find out who reads the blog.
+    """
 
-    # A malformed address still returns 400, but a valid one always returns the
-    # same response so the endpoint cannot be used to enumerate subscribers.
-    return Response({'message': 'Subscribed successfully.'}, status=status.HTTP_200_OK)
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'newsletter'
+
+    def post(self, request):
+        serializer = NewsletterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if not serializer.validated_data.get('website'):
+            newsletter.subscribe(serializer.validated_data['email'])
+        return Response(SUBSCRIBE_ACK, status=status.HTTP_200_OK)
+
+
+class NewsletterTokenView(APIView):
+    # The token is the only credential. Skipping JWT auth also means a stale
+    # login token in the browser cannot turn a click on an email link into a 401.
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'newsletter-token'
+
+    def get_token(self, request):
+        # One-click unsubscribes (RFC 8058) arrive as a form POST to the URL in
+        # the List-Unsubscribe header, which carries the token in the query.
+        data = request.data if hasattr(request.data, 'get') else {}
+        serializer = NewsletterTokenSerializer(
+            data={'token': data.get('token') or request.query_params.get('token', '')}
+        )
+        serializer.is_valid(raise_exception=True)
+        return serializer.validated_data['token']
+
+
+class NewsletterConfirmView(NewsletterTokenView):
+    def post(self, request):
+        try:
+            newsletter.confirm(self.get_token(request))
+        except newsletter.NewsletterError as error:
+            return Response({'detail': str(error)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'message': "You're subscribed. New posts will land in your inbox."})
+
+
+class NewsletterUnsubscribeView(NewsletterTokenView):
+    # POST only. Mail scanners fetch every link in a message with GET, and would
+    # unsubscribe people if that were enough.
+    def post(self, request):
+        try:
+            newsletter.unsubscribe(self.get_token(request))
+        except newsletter.NewsletterError as error:
+            return Response({'detail': str(error)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'message': "You've been unsubscribed and won't get any more emails."})
 
 
 class ContactMessageCreateView(generics.CreateAPIView):
@@ -204,7 +246,8 @@ class ContactMessageCreateView(generics.CreateAPIView):
             # nothing. Rejecting it would tell the author what to change.
             return Response(CONTACT_ACK, status=status.HTTP_201_CREATED)
 
-        serializer.save()
+        message = serializer.save()
+        newsletter.notify_contact_message(message)
         return Response(CONTACT_ACK, status=status.HTTP_201_CREATED)
 
 

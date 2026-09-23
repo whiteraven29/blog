@@ -3,7 +3,7 @@ import re
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.utils.html import strip_tags
-from .models import Category, Tag, Post, Comment, ContactMessage, Newsletter
+from .models import Category, Tag, Post, Comment, ContactMessage
 
 
 # Control characters serve no purpose in form input. DRF's CharField already
@@ -197,15 +197,19 @@ class PostWriteSerializer(serializers.ModelSerializer):
         return instance
 
 
-class NewsletterSerializer(serializers.ModelSerializer):
-    # Uniqueness is resolved in the view so that resubscribing looks identical to
-    # a first subscription; the default validator would report which addresses
-    # are already on the list.
-    email = serializers.EmailField(validators=[])
+class NewsletterSerializer(serializers.Serializer):
+    # A plain serializer rather than a ModelSerializer: the model's uniqueness
+    # validator would report which addresses are already on the list.
+    email = serializers.EmailField(max_length=254)
+    # Honeypot, as on the contact form.
+    website = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
-    class Meta:
-        model = Newsletter
-        fields = ['email']
+    def validate_email(self, value):
+        return value.strip().lower()
+
+
+class NewsletterTokenSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=200, trim_whitespace=True)
 
 
 class ContactMessageSerializer(serializers.ModelSerializer):

@@ -1,0 +1,8 @@
+{% extends "blog/email/_base.html" %}
+{% block content %}
+<h1 style="margin:0 0 12px;font-size:20px;">Confirm your subscription</h1>
+<p style="margin:0 0 20px;line-height:1.6;">Someone, hopefully you, asked to get an email from {{ site_name }} whenever a new post goes up. Confirm to start receiving them.</p>
+<p style="margin:0 0 24px;"><a href="{{ confirm_url }}" style="display:inline-block;background:#a855f7;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:600;">Confirm subscription</a></p>
+<p style="margin:0 0 8px;font-size:13px;color:#5b5b6b;line-height:1.6;">The link works for {{ valid_days }} days. If you didn't sign up, ignore this email and you won't hear from us again.</p>
+<p style="margin:0;font-size:12px;color:#8a8a99;word-break:break-all;">{{ confirm_url }}</p>
+{% endblock %}

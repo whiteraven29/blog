@@ -1,0 +1,20 @@
+[Unit]
+Description=wh1t3r4v3n Blog newsletter sender
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+# Started by whiteraven-blog-newsletter.timer. systemd never starts a unit that
+# is still running, so two sends cannot overlap.
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/apps/whiteraven-blog/current/backend
+EnvironmentFile=/var/www/shared/whiteraven-blog/.env
+Environment=TMPDIR=/var/www/tmp/whiteraven-blog
+ExecStart=/var/www/apps/whiteraven-blog/current/venv/bin/python manage.py send_newsletter
+TimeoutStartSec=30min
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/var/www/shared/whiteraven-blog /var/www/logs/whiteraven-blog /var/www/tmp/whiteraven-blog

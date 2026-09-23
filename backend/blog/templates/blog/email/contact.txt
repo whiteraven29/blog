@@ -1,0 +1,10 @@
+{% autoescape off %}New message from the {{ site_name }} contact form.
+
+From: {{ message.name }} <{{ message.email }}>
+Subject: {{ message.subject }}
+
+{{ message.message }}
+
+--
+Reply to this email to answer them.
+{% endautoescape %}

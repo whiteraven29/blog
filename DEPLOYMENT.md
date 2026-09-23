@@ -118,6 +118,71 @@ sudo systemctl reload nginx
 If the installed copy was overwritten, restore the domain in `server_name` and
 re-run `sudo certbot --nginx -d <domain>` to rebuild the TLS block.
 
+## Email and newsletter
+
+Email goes out through Brevo's SMTP relay. It covers three things: newsletter
+confirmations, new-post emails to subscribers, and contact-form messages
+forwarded to `CONTACT_NOTIFY_EMAIL`. When `DJANGO_EMAIL_HOST` is empty, nothing
+is sent. Sign-ups still work, and new-post emails wait until email is configured.
+
+### One-time Brevo setup
+
+1. In Brevo, add and authenticate the sending domain (**Senders, Domains &
+   Dedicated IPs → Domains**). Publish the DKIM, SPF and DMARC records it lists.
+   Without them, Gmail and Yahoo send the mail to spam or reject it.
+2. Add the From address as a verified sender.
+3. Generate an SMTP key under **SMTP & API → SMTP**.
+4. Fill in the email block of `/var/www/shared/whiteraven-blog/.env` (see
+   `deploy/env.production.example`), then `sudo systemctl restart whiteraven-blog`.
+5. Send yourself a test message:
+
+   ```bash
+   cd /var/www/apps/whiteraven-blog/current/backend
+   sudo -u www-data bash -c 'set -a; source /var/www/shared/whiteraven-blog/.env; set +a; \
+     ../venv/bin/python manage.py sendtestemail you@example.com'
+   ```
+
+### The send timer
+
+`whiteraven-blog-newsletter.timer` runs `manage.py send_newsletter` every ten
+minutes. `bootstrap.sh` installs it on a new server. A server bootstrapped
+before the newsletter existed needs it installed once:
+
+```bash
+sudo install -m 0644 deploy/systemd/whiteraven-blog-newsletter.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now whiteraven-blog-newsletter.timer
+```
+
+```bash
+systemctl list-timers whiteraven-blog-newsletter.timer   # next and last run
+sudo journalctl -u whiteraven-blog-newsletter            # what each run sent
+```
+
+To see what the next run would send without sending anything, run the same
+command as the test email above with `send_newsletter --dry-run`.
+
+### How sending behaves
+
+- A post is emailed once, the first time the timer sees it published. Posts that
+  were already published when the newsletter shipped are marked as sent and never
+  go out. So is any post published more than seven days before the timer reaches it.
+- Each email is recorded before it is sent. A crash or SMTP failure never mails
+  anyone twice, and the next run retries whatever was left.
+- New-post emails stop at `NEWSLETTER_DAILY_SEND_LIMIT` per rolling 24 hours and
+  resume on a later run.
+- To publish a post without emailing anyone, select it in the admin and choose
+  **Don't email subscribers about selected posts** within ten minutes of
+  publishing.
+
+### Subscribers
+
+Sign-up is double opt-in. Only addresses that clicked the confirmation link get
+mail. Addresses that signed up before confirmation existed show as **Awaiting
+confirmation**. Select them in the admin and choose **Resend confirmation email**
+to invite them to opt in. Every new-post email carries an unsubscribe link and
+the one-click `List-Unsubscribe` headers that Gmail and Yahoo require.
+
 ## Backups and rollback
 
 ```bash

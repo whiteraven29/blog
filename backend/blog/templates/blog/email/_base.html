@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ site_name }}</title>
+</head>
+<body style="margin:0;padding:24px 12px;background:#f4f4f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f1f2b;">
+<div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:8px;border-top:4px solid #a855f7;padding:28px 24px;">
+<p style="margin:0 0 20px;font-family:'JetBrains Mono',Menlo,Consolas,monospace;font-size:14px;color:#7e22ce;">{{ site_name }}</p>
+{% block content %}{% endblock %}
+</div>
+{% block footer %}{% endblock %}
+</body>
+</html>
