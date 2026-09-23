@@ -32,11 +32,15 @@ class PostAdmin(admin.ModelAdmin):
 class CommentAdmin(admin.ModelAdmin):
     list_display = ['author_name', 'post', 'is_approved', 'created_at']
     list_filter = ['is_approved']
-    actions = ['approve_comments']
+    actions = ['approve_comments', 'hide_comments']
 
     def approve_comments(self, request, queryset):
         queryset.update(is_approved=True)
-    approve_comments.short_description = 'Approve selected comments'
+    approve_comments.short_description = 'Show selected comments'
+
+    def hide_comments(self, request, queryset):
+        queryset.update(is_approved=False)
+    hide_comments.short_description = 'Hide selected comments'
 
 
 @admin.register(Newsletter)

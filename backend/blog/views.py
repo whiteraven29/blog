@@ -129,8 +129,11 @@ class MyPostsView(generics.ListAPIView):
 
 
 class CommentCreateView(generics.CreateAPIView):
+    # Comments publish without review, so the rate limit is what stops a flood.
     serializer_class = CommentSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'comment'
 
     def perform_create(self, serializer):
         post = generics.get_object_or_404(Post, slug=self.kwargs['slug'], status='published')

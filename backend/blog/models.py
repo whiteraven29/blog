@@ -95,7 +95,9 @@ class Comment(models.Model):
     author_name = models.CharField(max_length=80, blank=True, default='')
     author_email = models.EmailField(blank=True, default='')
     body = models.TextField()
-    is_approved = models.BooleanField(default=False)
+    # Comments go live as soon as they are posted. Unticking this in the admin
+    # hides one again.
+    is_approved = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

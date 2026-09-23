@@ -123,7 +123,7 @@ class BlogApiTests(APITestCase):
             {
                 'author_name': 'Reader',
                 'author_email': 'reader@example.com',
-                'body': 'Pending review',
+                'body': 'Thanks for the writeup',
             },
         )
 
@@ -141,6 +141,17 @@ class BlogApiTests(APITestCase):
         comment = Comment.objects.get()
         self.assertEqual(comment.author_name, '')
         self.assertEqual(comment.author_email, '')
+
+    def test_submitted_comment_is_visible_without_review(self):
+        self.client.post(
+            reverse('comment-create', kwargs={'slug': self.published.slug}),
+            {'author_name': 'Reader', 'body': 'Straight onto the page'},
+        )
+
+        response = self.client.get(reverse('post-detail', kwargs={'slug': self.published.slug}))
+
+        self.assertEqual(response.data['comment_count'], 1)
+        self.assertEqual(response.data['comments'][0]['body'], 'Straight onto the page')
 
     def test_editor_get_returns_nested_category_and_tags(self):
         self.authenticate()

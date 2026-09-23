@@ -42,11 +42,19 @@ export default function PostDetail() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      await blogApi.addComment(slug, comment)
-      setCommentMsg('Comment submitted for review.')
+      const { data } = await blogApi.addComment(slug, comment)
+      setRequest((prev) => ({
+        ...prev,
+        post: { ...prev.post, comments: [...(prev.post.comments || []), data] },
+      }))
+      setCommentMsg('Comment posted.')
       setComment({ author_name: '', author_email: '', body: '' })
-    } catch {
-      setCommentMsg('Failed to submit comment.')
+    } catch (err) {
+      setCommentMsg(
+        err.response?.status === 429
+          ? 'That is a lot of comments in a short time. Please try again later.'
+          : 'Failed to submit comment.'
+      )
     } finally {
       setSubmitting(false)
     }

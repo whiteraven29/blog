@@ -133,6 +133,7 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 12,
     'DEFAULT_THROTTLE_RATES': {
         'contact': '5/hour',
+        'comment': '10/hour',
     },
     # nginx appends the real peer address to X-Forwarded-For, so the last entry
     # is the only one a client cannot spoof. Without this, DRF hashes the whole
