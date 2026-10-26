@@ -135,6 +135,7 @@ REST_FRAMEWORK = {
         'contact': '5/hour',
         'comment': '10/hour',
         'newsletter': '5/hour',
+        'post-unlock': '30/hour',
         # Confirm and unsubscribe links carry unguessable tokens, so this only
         # stops hammering. It stays generous because mail providers send
         # one-click unsubscribes for many readers from a few shared addresses.

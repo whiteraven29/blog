@@ -283,6 +283,95 @@ class BlogApiTests(APITestCase):
         self.assertEqual(json.loads(response.content), {'status': 'ok'})
 
 
+class LockedPostTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.author = User.objects.create_user(username='author', password='safe-password')
+        self.post = Post.objects.create(
+            title='Active box',
+            author=self.author,
+            content='## Foothold\n\nsecret-exploit-chain',
+            status='published',
+            is_locked=True,
+            lock_password='HTB{root-flag}',
+        )
+        Comment.objects.create(post=self.post, body='spoiler in a comment')
+
+    def test_password_is_stored_hashed(self):
+        self.post.refresh_from_db()
+
+        self.assertNotEqual(self.post.lock_password, 'HTB{root-flag}')
+        self.assertTrue(self.post.check_lock_password('HTB{root-flag}'))
+
+    def test_detail_withholds_content_and_comments(self):
+        response = self.client.get(reverse('post-detail', args=[self.post.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data['content_locked'])
+        self.assertEqual(response.data['content'], '')
+        self.assertEqual(response.data['comments'], [])
+        self.assertEqual(response.data['lock_platform'], 'HackTheBox')
+        self.assertNotIn('secret-exploit-chain', response.content.decode())
+        self.assertNotIn('lock_password', response.data)
+
+    def test_no_excerpt_is_cut_from_locked_content(self):
+        self.assertEqual(self.post.excerpt, '')
+
+        response = self.client.get(reverse('post-list'))
+        self.assertNotIn('secret-exploit-chain', response.content.decode())
+
+    def test_search_does_not_match_locked_content(self):
+        for url in (reverse('search') + '?q=secret-exploit', reverse('post-list') + '?search=secret-exploit'):
+            response = self.client.get(url)
+            self.assertEqual(response.data['count'], 0, url)
+
+    def test_unlock_with_wrong_password_is_refused(self):
+        response = self.client.post(reverse('post-unlock', args=[self.post.slug]), {'password': 'nope'})
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_unlock_with_password_returns_content(self):
+        response = self.client.post(
+            reverse('post-unlock', args=[self.post.slug]), {'password': ' HTB{root-flag}\n'}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data['content_locked'])
+        self.assertIn('secret-exploit-chain', response.data['content'])
+        self.assertEqual(len(response.data['comments']), 1)
+
+    def test_author_sees_own_locked_post(self):
+        self.client.force_authenticate(user=self.author)
+
+        response = self.client.get(reverse('post-detail', args=[self.post.slug]))
+
+        self.assertFalse(response.data['content_locked'])
+        self.assertIn('secret-exploit-chain', response.data['content'])
+
+    def test_locking_requires_a_password(self):
+        self.client.force_authenticate(user=self.author)
+        open_post = Post.objects.create(title='Open', author=self.author, content='x')
+
+        response = self.client.patch(
+            reverse('post-update', args=[open_post.slug]), {'is_locked': True}, format='json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('lock_password', response.data)
+
+    def test_blank_password_on_update_keeps_the_current_one(self):
+        self.client.force_authenticate(user=self.author)
+
+        response = self.client.patch(
+            reverse('post-update', args=[self.post.slug]),
+            {'title': 'Renamed', 'lock_password': ''}, format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data['has_lock_password'])
+        self.post.refresh_from_db()
+        self.assertTrue(self.post.check_lock_password('HTB{root-flag}'))
+
+
 class ImportPostCommandTests(TestCase):
     def setUp(self):
         self.author = User.objects.create_user(username='importer', password='safe-password')

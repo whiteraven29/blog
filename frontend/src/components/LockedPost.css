@@ -1,0 +1,60 @@
+.locked-post {
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.9rem;
+}
+.locked-post__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.locked-post__title {
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+.locked-post__text {
+  max-width: 520px;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+.locked-post__form {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 380px;
+  margin-top: 0.5rem;
+}
+.locked-post__form .input { flex: 1; min-width: 0; }
+.locked-post__error { font-size: 0.825rem; color: var(--danger); }
+
+/* Above a locked post's content, for its author and readers who unlocked it */
+.locked-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 480px) {
+  .locked-post { padding: 2rem 1.25rem; }
+  .locked-post__form { flex-direction: column; }
+}

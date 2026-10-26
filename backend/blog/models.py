@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.hashers import check_password, identify_hasher, make_password
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 import secrets
@@ -43,6 +44,22 @@ class Tag(models.Model):
         return self.name
 
 
+class PostQuerySet(models.QuerySet):
+    def with_searchable_content(self):
+        """Annotate the content search may match against.
+
+        Locked writeups contribute nothing, otherwise a search for a flag or a
+        password would confirm what a locked post says.
+        """
+        return self.annotate(
+            searchable_content=models.Case(
+                models.When(is_locked=True, then=models.Value('')),
+                default=models.F('content'),
+                output_field=models.TextField(),
+            )
+        )
+
+
 class Post(models.Model):
     STATUS_CHOICES = [
         ('draft', 'Draft'),
@@ -74,6 +91,20 @@ class Post(models.Model):
     # Set once subscribers have been emailed about this post, or once it has been
     # deliberately skipped. `send_newsletter` only looks at posts where it is empty.
     newsletter_sent_at = models.DateTimeField(null=True, blank=True)
+    # Writeups for active machines. While locked, readers get the post's title
+    # and a notice, and the content only after posting the password to /unlock/.
+    is_locked = models.BooleanField(default=False)
+    lock_password = models.CharField(
+        max_length=128, blank=True,
+        help_text='Stored hashed. Type a new password here to change it.',
+    )
+    lock_platform = models.CharField(max_length=60, blank=True, default='HackTheBox')
+    lock_hint = models.CharField(
+        max_length=200, blank=True, default='the root flag',
+        help_text='Completes "the password is …" in the notice readers see.',
+    )
+
+    objects = PostQuerySet.as_manager()
 
     class Meta:
         ordering = ['-published_at', '-created_at']
@@ -86,9 +117,23 @@ class Post(models.Model):
             while Post.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
                 self.slug = f'{base}-{n}'
                 n += 1
-        if not self.excerpt and self.content:
+        if self.is_locked:
+            # An excerpt cut from the content would publish the start of a
+            # locked writeup on cards, in the RSS feed and in newsletter mail.
+            if self.excerpt == self.content[:400]:
+                self.excerpt = ''
+        elif not self.excerpt and self.content:
             self.excerpt = self.content[:400]
+        if self.lock_password:
+            try:
+                identify_hasher(self.lock_password)
+            except ValueError:
+                # Plain text from the editor or the admin form.
+                self.lock_password = make_password(self.lock_password)
         super().save(*args, **kwargs)
+
+    def check_lock_password(self, raw_password):
+        return bool(self.lock_password) and check_password(raw_password, self.lock_password)
 
     def __str__(self):
         return self.title

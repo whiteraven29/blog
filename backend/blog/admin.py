@@ -21,8 +21,8 @@ class TagAdmin(admin.ModelAdmin):
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
-    list_display = ['title', 'author', 'category', 'status', 'difficulty', 'is_featured', 'views', 'published_at']
-    list_filter = ['status', 'difficulty', 'is_featured', 'category']
+    list_display = ['title', 'author', 'category', 'status', 'difficulty', 'is_featured', 'is_locked', 'views', 'published_at']
+    list_filter = ['status', 'difficulty', 'is_featured', 'is_locked', 'category']
     search_fields = ['title', 'content', 'excerpt']
     prepopulated_fields = {'slug': ('title',)}
     raw_id_fields = ['author']

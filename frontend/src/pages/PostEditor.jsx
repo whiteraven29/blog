@@ -4,6 +4,7 @@ import MDEditor from '@uiw/react-md-editor'
 import { blogApi } from '../api/client'
 import { markdownPlugins, normalizeMarkdown } from '../components/markdownConfig'
 import Spinner from '../components/Spinner'
+import { DEFAULT_LOCK, LOCK_PLATFORMS } from '../config/lockNotice'
 import './PostEditor.css'
 
 const EMPTY = {
@@ -16,6 +17,11 @@ const EMPTY = {
   status: 'draft',
   read_time: 5,
   is_featured: false,
+  is_locked: false,
+  lock_password: '',
+  lock_platform: DEFAULT_LOCK.platform,
+  lock_hint: DEFAULT_LOCK.hint,
+  has_lock_password: false,
 }
 
 export default function PostEditor() {
@@ -52,6 +58,11 @@ export default function PostEditor() {
           status: data.status || 'draft',
           read_time: data.read_time || 5,
           is_featured: data.is_featured || false,
+          is_locked: data.is_locked || false,
+          lock_password: '',
+          lock_platform: data.lock_platform || DEFAULT_LOCK.platform,
+          lock_hint: data.lock_hint || DEFAULT_LOCK.hint,
+          has_lock_password: data.has_lock_password || false,
         })
       })
       .catch(() => setError('Could not load post. Check you are the author.'))
@@ -108,11 +119,20 @@ export default function PostEditor() {
       status: overrideStatus ?? form.status,
       read_time: Number(form.read_time),
       is_featured: form.is_featured,
+      is_locked: form.is_locked,
+      lock_platform: form.lock_platform.trim(),
+      lock_hint: form.lock_hint.trim(),
+      // Left out when blank, so the stored password is kept.
+      ...(form.lock_password.trim() ? { lock_password: form.lock_password.trim() } : {}),
     }
   }
 
   const save = async (overrideStatus) => {
     if (!form.title.trim()) { setError('Title is required.'); return }
+    if (form.is_locked && !form.has_lock_password && !form.lock_password.trim()) {
+      setError('Set a password to lock this post.')
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -127,6 +147,9 @@ export default function PostEditor() {
         resultSlug = slug
       }
       setLastSaved(new Date())
+      if (payload.lock_password) {
+        setForm((f) => ({ ...f, lock_password: '', has_lock_password: true }))
+      }
       if (overrideStatus === 'published') {
         navigate(`/posts/${resultSlug}`)
       }
@@ -295,6 +318,60 @@ export default function PostEditor() {
             />
             <label htmlFor="featured">Featured post</label>
           </div>
+
+          <div className="editor-field editor-field--check">
+            <input
+              type="checkbox"
+              id="locked"
+              checked={form.is_locked}
+              onChange={(e) => set('is_locked', e.target.checked)}
+            />
+            <label htmlFor="locked">Lock with password (active machine)</label>
+          </div>
+
+          {form.is_locked && (
+            <div className="editor-lock">
+              <div className="editor-field">
+                <label htmlFor="editor-lock-password">
+                  Password
+                  {form.has_lock_password && <span className="editor-hint">set · leave blank to keep</span>}
+                </label>
+                <input
+                  id="editor-lock-password"
+                  className="input"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder={form.has_lock_password ? '••••••••' : 'e.g. the root flag'}
+                  value={form.lock_password}
+                  onChange={(e) => set('lock_password', e.target.value)}
+                />
+              </div>
+              <div className="editor-field">
+                <label htmlFor="editor-lock-platform">Platform</label>
+                <input
+                  id="editor-lock-platform"
+                  className="input"
+                  list="lock-platforms"
+                  value={form.lock_platform}
+                  onChange={(e) => set('lock_platform', e.target.value)}
+                />
+                <datalist id="lock-platforms">
+                  {LOCK_PLATFORMS.map((p) => <option key={p} value={p} />)}
+                </datalist>
+              </div>
+              <div className="editor-field">
+                <label htmlFor="editor-lock-hint">
+                  The password is… <span className="editor-hint">shown to readers</span>
+                </label>
+                <input
+                  id="editor-lock-hint"
+                  className="input"
+                  value={form.lock_hint}
+                  onChange={(e) => set('lock_hint', e.target.value)}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="editor-field">
             <label htmlFor="editor-status">Status</label>

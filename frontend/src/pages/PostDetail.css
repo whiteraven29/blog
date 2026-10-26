@@ -58,8 +58,8 @@
 
 .post-detail__body {
   display: grid;
-  grid-template-columns: 1fr 260px;
-  gap: 3rem;
+  grid-template-columns: 200px minmax(0, 1fr) 240px;
+  gap: 2.5rem;
   padding-top: 2.5rem;
   padding-bottom: 3rem;
   align-items: start;
@@ -178,6 +178,11 @@
 }
 .comment-form textarea.input { resize: vertical; }
 .comment-form__msg { font-size: 0.825rem; color: var(--accent); }
+
+@media (max-width: 1100px) {
+  .post-detail__body { grid-template-columns: minmax(0, 1fr) 240px; }
+  .post-detail__toc { display: none; }
+}
 
 @media (max-width: 900px) {
   .post-detail__body {

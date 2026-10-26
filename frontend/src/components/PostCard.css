@@ -99,3 +99,13 @@
   transition: opacity var(--transition);
 }
 .post-card__read-link:hover { opacity: 0.7; }
+
+.post-card__locked {
+  margin-left: auto;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-size: 0.7rem;
+}
+.post-card__locked::before { content: '🔒 '; }

@@ -1,16 +1,30 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import { blogApi } from '../api/client'
 import MarkdownContent from '../components/MarkdownContent'
 import Seo from '../components/Seo'
 import Spinner from '../components/Spinner'
+import TableOfContents from '../components/TableOfContents'
+import LockedPost from '../components/LockedPost'
 import './PostDetail.css'
 
 const DIFF_COLORS = {
   beginner: 'var(--success)',
   intermediate: 'var(--warning)',
   advanced: 'var(--danger)',
+}
+
+// Remember a password for the tab session, so a reload does not lock the post again.
+const unlockKey = (slug) => `unlock:${slug}`
+function readUnlock(slug) {
+  try { return sessionStorage.getItem(unlockKey(slug)) } catch { return null }
+}
+function writeUnlock(slug, password) {
+  try {
+    if (password) sessionStorage.setItem(unlockKey(slug), password)
+    else sessionStorage.removeItem(unlockKey(slug))
+  } catch { /* storage unavailable: the reader just types it again */ }
 }
 
 export default function PostDetail() {
@@ -23,12 +37,21 @@ export default function PostDetail() {
   const [comment, setComment] = useState({ author_name: '', author_email: '', body: '' })
   const [commentMsg, setCommentMsg] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const contentRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
 
     blogApi.getPost(slug)
-      .then(({ data }) => {
+      .then(async ({ data }) => {
+        const saved = data.content_locked && readUnlock(slug)
+        if (saved) {
+          try {
+            ({ data } = await blogApi.unlockPost(slug, saved))
+          } catch {
+            writeUnlock(slug, null)
+          }
+        }
         if (!cancelled) setRequest({ slug, post: data, error: null })
       })
       .catch(() => {
@@ -37,6 +60,12 @@ export default function PostDetail() {
 
     return () => { cancelled = true }
   }, [slug])
+
+  const handleUnlock = async (password) => {
+    const { data } = await blogApi.unlockPost(slug, password)
+    writeUnlock(slug, password)
+    setRequest((prev) => ({ ...prev, post: data }))
+  }
 
   const handleComment = async (e) => {
     e.preventDefault()
@@ -142,7 +171,24 @@ export default function PostDetail() {
       )}
 
       <div className="post-detail__body container">
-        <MarkdownContent className="post-detail__content">{post.content}</MarkdownContent>
+        <aside className="post-detail__toc">
+          <TableOfContents contentRef={contentRef} content={post.content} />
+        </aside>
+
+        <div ref={contentRef} className="post-detail__content">
+          {post.content_locked ? (
+            <LockedPost post={post} onUnlock={handleUnlock} />
+          ) : (
+            <>
+              {post.is_locked && (
+                <p className="locked-banner">
+                  🔒 Password-protected while active on {post.lock_platform || 'HackTheBox'}
+                </p>
+              )}
+              <MarkdownContent>{post.content}</MarkdownContent>
+            </>
+          )}
+        </div>
 
         <aside className="post-detail__sidebar">
           <div className="sidebar-card">
@@ -185,8 +231,8 @@ export default function PostDetail() {
         </aside>
       </div>
 
-      {/* Comments */}
-      <div className="post-comments container">
+      {/* Comments (withheld with the content while a post is locked) */}
+      {!post.content_locked && <div className="post-comments container">
         <h2><span className="accent">#</span>comments ({post.comments?.length || 0})</h2>
 
         {post.comments?.length > 0 && (
@@ -241,7 +287,7 @@ export default function PostDetail() {
           </button>
           {commentMsg && <p className="comment-form__msg">{commentMsg}</p>}
         </form>
-      </div>
+      </div>}
     </article>
   )
 }

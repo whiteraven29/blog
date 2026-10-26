@@ -44,6 +44,7 @@ export const blogApi = {
   getTags: () => client.get('/blog/tags/'),
   search: (q) => client.get('/blog/search/', { params: { q } }),
   getStats: () => client.get('/blog/stats/'),
+  unlockPost: (slug, password) => client.post(`/blog/posts/${slug}/unlock/`, { password }),
   addComment: (slug, data) => client.post(`/blog/posts/${slug}/comments/`, data),
   subscribe: (data) => client.post('/blog/newsletter/', data),
   confirmSubscription: (token) => client.post('/blog/newsletter/confirm/', { token }),

@@ -59,7 +59,7 @@ class PostListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['category__slug', 'tags__slug', 'difficulty', 'is_featured']
-    search_fields = ['title', 'excerpt', 'content', 'tags__name', 'category__name']
+    search_fields = ['title', 'excerpt', 'searchable_content', 'tags__name', 'category__name']
     ordering_fields = ['published_at', 'views', 'created_at', 'read_time']
     ordering = ['-published_at']
 
@@ -68,6 +68,7 @@ class PostListView(generics.ListAPIView):
         return (
             Post.objects
             .filter(status='published')
+            .with_searchable_content()
             .select_related('author', 'category')
             .prefetch_related('tags')
         )
@@ -95,7 +96,28 @@ class PostDetailView(generics.RetrieveAPIView):
             # and the refresh returns the stored value rather than the stale one.
             Post.objects.filter(pk=instance.pk).update(views=F('views') + 1)
             instance.refresh_from_db(fields=['views'])
-        serializer = self.get_serializer(instance)
+        user = request.user
+        unlocked = user.is_authenticated and (user.is_staff or instance.author_id == user.pk)
+        serializer = self.get_serializer(instance, context={**self.get_serializer_context(), 'unlocked': unlocked})
+        return Response(serializer.data)
+
+
+class PostUnlockView(APIView):
+    """Return a locked post's full content to a reader who knows its password."""
+
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'post-unlock'
+
+    def post(self, request, slug):
+        post = generics.get_object_or_404(
+            Post.objects.select_related('author', 'category').prefetch_related('tags', 'comments'),
+            slug=slug, status='published',
+        )
+        password = request.data.get('password') if hasattr(request.data, 'get') else None
+        if post.is_locked and not (isinstance(password, str) and post.check_lock_password(password.strip())):
+            return Response({'detail': 'Wrong password.'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = PostDetailSerializer(post, context={'request': request, 'unlocked': True})
         return Response(serializer.data)
 
 
@@ -157,9 +179,9 @@ class SearchView(generics.ListAPIView):
         q = self.request.query_params.get('q', '').strip()
         if not q:
             return Post.objects.none()
-        return Post.objects.filter(
+        return Post.objects.with_searchable_content().filter(
             Q(title__icontains=q) | Q(excerpt__icontains=q) |
-            Q(content__icontains=q) | Q(tags__name__icontains=q) |
+            Q(searchable_content__icontains=q) | Q(tags__name__icontains=q) |
             Q(category__name__icontains=q),
             status='published',
         ).distinct().order_by('-published_at')

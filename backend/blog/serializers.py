@@ -115,6 +115,7 @@ class PostListSerializer(serializers.ModelSerializer):
             'id', 'title', 'slug', 'author', 'category', 'tags',
             'excerpt', 'cover_image', 'status', 'difficulty',
             'is_featured', 'views', 'read_time', 'published_at', 'created_at',
+            'is_locked', 'lock_platform',
         ]
 
     def get_cover_image(self, obj):
@@ -129,7 +130,19 @@ class PostDetailSerializer(PostListSerializer):
     comment_count = serializers.SerializerMethodField()
 
     class Meta(PostListSerializer.Meta):
-        fields = PostListSerializer.Meta.fields + ['content', 'comments', 'comment_count', 'updated_at']
+        fields = PostListSerializer.Meta.fields + [
+            'content', 'comments', 'comment_count', 'updated_at', 'lock_hint',
+        ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Views put `unlocked` in the context for the author, staff, and readers
+        # who sent the right password. Comments stay hidden too: they are where
+        # spoilers for a writeup end up.
+        data['content_locked'] = instance.is_locked and not self.context.get('unlocked')
+        if data['content_locked']:
+            data.update(content='', comments=[], comment_count=0)
+        return data
 
     def _approved_comments(self, obj):
         # Filter in Python so the view's prefetch_related('comments') is reused
@@ -159,10 +172,27 @@ class PostWriteSerializer(serializers.ModelSerializer):
             'slug', 'title', 'category', 'tags', 'tags_by_name',
             'excerpt', 'content', 'cover_image', 'status',
             'difficulty', 'is_featured', 'read_time', 'published_at',
+            'is_locked', 'lock_password', 'lock_platform', 'lock_hint',
         ]
+        extra_kwargs = {
+            'lock_password': {'write_only': True, 'required': False, 'allow_blank': True},
+        }
+
+    def validate(self, attrs):
+        # A blank password means "keep the current one".
+        if not attrs.get('lock_password'):
+            attrs.pop('lock_password', None)
+        is_locked = attrs.get('is_locked', getattr(self.instance, 'is_locked', False))
+        has_password = 'lock_password' in attrs or bool(getattr(self.instance, 'lock_password', ''))
+        if is_locked and not has_password:
+            raise serializers.ValidationError({'lock_password': 'Set a password to lock this post.'})
+        return attrs
 
     def to_representation(self, instance):
-        return PostDetailSerializer(instance, context=self.context).data
+        # Only the author reaches this serializer, so the content is never withheld.
+        data = PostDetailSerializer(instance, context={**self.context, 'unlocked': True}).data
+        data['has_lock_password'] = bool(instance.lock_password)
+        return data
 
     def _resolve_tags(self, validated_data):
         tag_names = validated_data.pop('tags_by_name', None)

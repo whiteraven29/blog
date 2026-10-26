@@ -34,6 +34,11 @@ export default function PostCard({ post }) {
           >
             {post.difficulty}
           </span>
+          {post.is_locked && (
+            <span className="post-card__locked" title={`Locked while active on ${post.lock_platform || 'HackTheBox'}`}>
+              locked
+            </span>
+          )}
         </div>
 
         <h3 className="post-card__title">
